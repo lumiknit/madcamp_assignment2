@@ -30,6 +30,7 @@ public class Tab3Fragment extends Fragment {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         mPage = getArguments().getInt(ARG_PAGE);
+
     }
 
     @Override
