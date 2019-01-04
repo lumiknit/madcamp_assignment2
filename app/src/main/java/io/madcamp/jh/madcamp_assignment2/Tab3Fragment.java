@@ -2,7 +2,10 @@ package io.madcamp.jh.madcamp_assignment2;
 
 import android.app.FragmentManager;
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.graphics.Camera;
+import android.graphics.Canvas;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.view.LayoutInflater;
@@ -14,6 +17,8 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapFragment;
 import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.model.BitmapDescriptor;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
@@ -51,11 +56,18 @@ public class Tab3Fragment extends Fragment {
             public void onMapReady(GoogleMap googleMap) {
                 LatLng SEOUL = new LatLng(37.56, 126.97);
 
+                BitmapDescriptor desc = getMarkerIconFromDrawable(
+                        getResources().getDrawable(R.drawable.ic_baseline_camera_alt));
+
                 MarkerOptions markerOptions = new MarkerOptions();
                 markerOptions.position(SEOUL)
                         .title("서울")
-                        .snippet("ㅇㅇ");
+                        .snippet("ㅇㅇ")
+                        .icon(desc)
+                        .alpha(0.8f);
                 googleMap.addMarker(markerOptions).setTag("Test");
+
+                googleMap.setInfoWindowAdapter(new CustomInfoWindowAdapter(getActivity()));
 
                 googleMap.moveCamera(CameraUpdateFactory.newLatLng(SEOUL));
                 googleMap.animateCamera(CameraUpdateFactory.zoomTo(15));
@@ -70,5 +82,14 @@ public class Tab3Fragment extends Fragment {
         });
 
         return top;
+    }
+
+    private BitmapDescriptor getMarkerIconFromDrawable(Drawable drawable) {
+        Canvas canvas = new Canvas();
+        Bitmap bitmap = Bitmap.createBitmap(drawable.getIntrinsicWidth(), drawable.getIntrinsicHeight(), Bitmap.Config.ARGB_8888);
+        canvas.setBitmap(bitmap);
+        drawable.setBounds(0, 0, drawable.getIntrinsicWidth(), drawable.getIntrinsicWidth());
+        drawable.draw(canvas);
+        return BitmapDescriptorFactory.fromBitmap(bitmap);
     }
 }
