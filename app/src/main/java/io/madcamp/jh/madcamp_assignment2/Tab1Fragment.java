@@ -15,11 +15,9 @@ import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
 import android.support.v4.content.ContextCompat;
+import android.support.v4.widget.SwipeRefreshLayout;
 import android.text.Editable;
-import android.text.Spannable;
-import android.text.SpannableStringBuilder;
 import android.text.TextWatcher;
-import android.text.style.ForegroundColorSpan;
 import android.util.Log;
 import android.util.Pair;
 import android.view.LayoutInflater;
@@ -30,6 +28,7 @@ import android.view.animation.AnimationUtils;
 import android.widget.AdapterView;
 import android.widget.EditText;
 import android.widget.ListView;
+import android.widget.Toast;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -43,12 +42,31 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Collections;
 
+import com.facebook.AccessToken;
+import com.google.gson.JsonArray;
+
+import okhttp3.RequestBody;
+import okhttp3.ResponseBody;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+import retrofit2.Retrofit;
+import retrofit2.converter.gson.GsonConverterFactory;
+import retrofit2.http.Body;
+import retrofit2.http.DELETE;
+import retrofit2.http.GET;
+import retrofit2.http.POST;
+import retrofit2.http.PUT;
+import retrofit2.http.Path;
+
 public class Tab1Fragment extends Fragment {
     /* --- Constants --- */
     public static final String ARG_PAGE = "ARG_PAGE";
-    public static final int REQUEST_CODE_ADD = 524;
-    public static final int REQUEST_CODE_EDIT = 47;
-    public static final int REQUEST_CODE_JSON = 11;
+    public static final int REQUEST_CODE_ADD = 1;
+    public static final int REQUEST_CODE_PICK = 2;
+    public static final int REQUEST_CODE_EDIT = 3;
+    public static final int REQUEST_CODE_JSON = 4;
+
     public static final int MY_PERMISSIONS_REQUEST_READ_CONTACTS = 112;
 
 
@@ -58,9 +76,14 @@ public class Tab1Fragment extends Fragment {
     private View top;
     public String[] call_or_delete = {"통화","수정","삭제"};
 
-    private ArrayList<Pair<String, String>> contacts;
+    private ArrayList<Contact> contacts;
     private ArrayList<ListViewAdapter.Item> shownContacts;
     private ListViewAdapter adapter;
+
+    private SwipeRefreshLayout swipeRefreshLayout;
+
+
+
 
     /* --- Header --- */
     /* TabPagerAdapter에서 Fragment 생성할 때 사용하는 메소드 */
@@ -85,11 +108,9 @@ public class Tab1Fragment extends Fragment {
 
         initializeFloatingActionButton();
 
-        final ListView contact_listview = (ListView)top.findViewById(R.id.contact_listview);
+        final ListView contact_listview = top.findViewById(R.id.contact_listview);
 
-        String fileContents = readInternalFile("contacts.json");
-        contacts = unpackFromJSON(fileContents);
-        shownContacts = new ArrayList<>();
+        loadContacts();
 
         adapter = new ListViewAdapter(context,R.layout.item_text2, shownContacts);
         contact_listview.setAdapter(adapter);
@@ -102,7 +123,7 @@ public class Tab1Fragment extends Fragment {
                 final int position = shownContacts.get(shownPosition).index;
 
                 AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
-                builder.setTitle(contacts.get(position).first);
+                builder.setTitle(contacts.get(position).name);
                 builder.setItems(call_or_delete, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
@@ -111,12 +132,12 @@ public class Tab1Fragment extends Fragment {
                             updateContacts();
                         } else if (which == 1){
                             Intent intent = new Intent(context.getApplicationContext(), EditcontactActivity.class);
-                            intent.putExtra("contact_name",contacts.get(position).first);
-                            intent.putExtra("contact_number",contacts.get(position).second);
+                            intent.putExtra("contact_name",contacts.get(position).name);
+                            intent.putExtra("contact_number",contacts.get(position).phoneNumber);
                             intent.putExtra("contact_position",position);
                             startActivityForResult(intent, REQUEST_CODE_EDIT);
                         } else {
-                            Intent intent = new Intent("android.intent.action.DIAL",Uri.parse("tel:" + contacts.get(position).second));
+                            Intent intent = new Intent("android.intent.action.DIAL",Uri.parse("tel:" + contacts.get(position).phoneNumber));
                             startActivity(intent);
                         }
                     }
@@ -127,21 +148,29 @@ public class Tab1Fragment extends Fragment {
             }
         });
 
-        EditText editText = (EditText)top.findViewById(R.id.searcheditText);
+        EditText editText = top.findViewById(R.id.searcheditText);
         editText.addTextChangedListener(new TextWatcher() {
             @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-
-            }
-
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
             @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
-
-            }
-
+            public void onTextChanged(CharSequence s, int start, int before, int count) { }
             @Override
             public void afterTextChanged(Editable s) {
                 updateContacts();
+            }
+        });
+
+        swipeRefreshLayout = top.findViewById(R.id.swipe_refresh_layout);
+        swipeRefreshLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
+            @Override
+            public void onRefresh() {
+                AccessToken token = AccessToken.getCurrentAccessToken();
+                if(LoginHelper.checkRegistered(context)) {
+                    Toast.makeText(getActivity(), "Test", Toast.LENGTH_SHORT).show();
+                    refresh();
+                } else {
+                    swipeRefreshLayout.setRefreshing(false);
+                }
             }
         });
 
@@ -183,88 +212,11 @@ public class Tab1Fragment extends Fragment {
                 int id = v.getId();
                 Intent intent;
                 switch(id) {
-                    case R.id.fab: /* Menu button */
-                        anim();
-                        break;
-                    case R.id.fab1: /* Add button */
-                        intent = new Intent(context.getApplicationContext(), AddcontactActivity.class);
-                        startActivityForResult(intent, REQUEST_CODE_ADD);
-                        break;
-                    case R.id.fab2: /* Load from contacts button */
-
-                        AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
-
-                        builder.setMessage("휴대폰에 저장된 모든 연락처를 목록에 추가합니다. 진행하시겠습니까?");
-                        builder.setTitle("경고!")
-                                .setCancelable(false)
-                                    .setPositiveButton("확인", new DialogInterface.OnClickListener() {
-                                        @Override
-                                        public void onClick(DialogInterface dialog, int which) {
-                                            String[] arrProjection = {
-                                                    ContactsContract.Contacts._ID,
-                                                    ContactsContract.Contacts.DISPLAY_NAME};
-                                            String[] arrPhoneProjection = {ContactsContract.CommonDataKinds.Phone.NUMBER};
-
-                                            Cursor clsCursor = context.getContentResolver().query(
-                                                    ContactsContract.Contacts.CONTENT_URI, arrProjection,
-                                                    ContactsContract.Contacts.HAS_PHONE_NUMBER + "=1", null, null);
-
-                                            while(clsCursor.moveToNext()) {
-                                                String strContactId = clsCursor.getString(0);
-
-                                                Cursor clsPhoneCursor = context.getContentResolver().query(
-                                                        ContactsContract.CommonDataKinds.Phone.CONTENT_URI, arrPhoneProjection,
-                                                        ContactsContract.CommonDataKinds.Phone.CONTACT_ID + "=" + strContactId, null, null);
-                                                while(clsPhoneCursor.moveToNext()){
-                                                    contacts.add(new Pair<String, String>(clsCursor.getString(1),clsPhoneCursor.getString(0)));
-                                                }
-                                                clsPhoneCursor.close();
-                                                updateContacts();
-                                            }
-                                            dialog.dismiss();
-                                        }
-                                    })
-                                    .setNegativeButton("취소", new DialogInterface.OnClickListener() {
-                                        @Override
-                                        public void onClick(DialogInterface dialog, int which) {
-                                            dialog.cancel();
-                                        }
-                                    });
-                            AlertDialog alert = builder.create();
-                            alert.show();
-
-                        break;
-
-                    case R.id.fab3: /* Load from/save as JSON button */
-                        intent = new Intent(context.getApplicationContext(), JsoncontactActivity.class);
-                        intent.putExtra("JSON", packIntoJSON(contacts));
-                        startActivityForResult(intent, REQUEST_CODE_JSON);
-                        break;
-
-                    case R.id.fab4:
-                        AlertDialog.Builder builder2 = new AlertDialog.Builder(getActivity());
-
-                        builder2.setMessage("휴대폰에 저장된 모든 연락처를 삭제합니다. 진행하시겠습니까?");
-                        builder2.setTitle("경고!")
-                                .setCancelable(false)
-                                .setPositiveButton("확인", new DialogInterface.OnClickListener() {
-                                    @Override
-                                    public void onClick(DialogInterface dialog, int which) {
-
-                                        contacts.clear();
-                                        updateContacts();
-                                        dialog.dismiss();
-                                    }
-                                })
-                                .setNegativeButton("취소", new DialogInterface.OnClickListener() {
-                                    @Override
-                                    public void onClick(DialogInterface dialog, int which) {
-                                        dialog.cancel();
-                                    }
-                                });
-                        AlertDialog alert2 = builder2.create();
-                        alert2.show();
-
+                    case R.id.fab: anim(); break;
+                    case R.id.fab1: openAddContact(); break;
+                    case R.id.fab2: openLoadFromContacts(); break;
+                    case R.id.fab3: openLoadFromJSON(); break;
+                    case R.id.fab4: openClearContacts(); break;
                 }
             }
 
@@ -295,6 +247,109 @@ public class Tab1Fragment extends Fragment {
         }
     }
 
+    public void openAddContact() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+        builder.setMessage("휴대폰에 저장된 연락처에서 가져오시겠습니까?")
+                .setCancelable(true)
+                .setPositiveButton("휴대폰에서 가져오기", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        Intent intent = new Intent(Intent.ACTION_PICK, ContactsContract.Contacts.CONTENT_URI);
+                        intent.setType(ContactsContract.CommonDataKinds.Phone.CONTENT_TYPE);
+                        startActivityForResult(intent, REQUEST_CODE_PICK);
+                    }
+                })
+                .setNegativeButton("새로 만들기", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        Intent intent = new Intent(context.getApplicationContext(), AddcontactActivity.class);
+                        startActivityForResult(intent, REQUEST_CODE_ADD);
+                    }
+                });
+        builder.create().show();
+    }
+
+    public void openLoadFromContacts() {
+        Intent intent = new Intent(context.getApplicationContext(), AddcontactActivity.class);
+        startActivityForResult(intent, REQUEST_CODE_ADD);
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+
+        builder.setMessage("휴대폰에 저장된 모든 연락처를 목록에 추가합니다. 진행하시겠습니까?");
+        builder.setTitle("경고!")
+                .setCancelable(false)
+                .setPositiveButton("확인", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        String[] arrProjection = {
+                                ContactsContract.Contacts._ID,
+                                ContactsContract.Contacts.DISPLAY_NAME};
+                        String[] arrPhoneProjection = {ContactsContract.CommonDataKinds.Phone.NUMBER};
+
+                        Cursor clsCursor = context.getContentResolver().query(
+                                ContactsContract.Contacts.CONTENT_URI, arrProjection,
+                                ContactsContract.Contacts.HAS_PHONE_NUMBER + "=1", null, null);
+
+                        while(clsCursor.moveToNext()) {
+                            String strContactId = clsCursor.getString(0);
+
+                            Cursor clsPhoneCursor = context.getContentResolver().query(
+                                    ContactsContract.CommonDataKinds.Phone.CONTENT_URI, arrPhoneProjection,
+                                    ContactsContract.CommonDataKinds.Phone.CONTACT_ID + "=" + strContactId, null, null);
+                            while(clsPhoneCursor.moveToNext()){
+                                contacts.add(new Contact("", clsCursor.getString(1),clsPhoneCursor.getString(0)));
+                            }
+                            clsPhoneCursor.close();
+                            updateContacts();
+                        }
+                        dialog.dismiss();
+                    }
+                })
+                .setNegativeButton("취소", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.cancel();
+                    }
+                });
+        AlertDialog alert = builder.create();
+        alert.show();
+    }
+
+    public void openLoadFromJSON() {
+        Intent intent = new Intent(context.getApplicationContext(), JsoncontactActivity.class);
+        intent.putExtra("JSON", packIntoJSON(contacts));
+        startActivityForResult(intent, REQUEST_CODE_JSON);
+    }
+
+    public void openClearContacts() {
+        AlertDialog.Builder builder2 = new AlertDialog.Builder(getActivity());
+
+        builder2.setMessage("휴대폰에 저장된 모든 연락처를 삭제합니다. 진행하시겠습니까?");
+        builder2.setTitle("경고!")
+                .setCancelable(false)
+                .setPositiveButton("확인", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+
+                        contacts.clear();
+                        updateContacts();
+                        dialog.dismiss();
+                    }
+                })
+                .setNegativeButton("취소", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.cancel();
+                    }
+                });
+        AlertDialog alert2 = builder2.create();
+        alert2.show();
+    }
+
+
+
+
+
 
     /* --- ListView --- */
     @Override
@@ -306,10 +361,7 @@ public class Tab1Fragment extends Fragment {
                     String contact_name = data.getStringExtra("contact_name");
                     String contact_num = data.getStringExtra("contact_num");
                     if(contact_name == null || contact_num == null) return;
-                    Pair<String, String> pair = new Pair<String, String>(contact_name, contact_num);
-                    Log.d("Test@", "Pair Created 1st=" + contact_name + ", 2nd=" + contact_num);
-                    contacts.add(pair);
-                    updateContacts();
+                    addContact(new Contact("", contact_name, contact_num));
                 }
             break;
             case REQUEST_CODE_EDIT:
@@ -317,16 +369,35 @@ public class Tab1Fragment extends Fragment {
                     String contact_name = data.getStringExtra("contact_name");
                     String contact_num = data.getStringExtra("contact_num");
                     if(contact_name == null || contact_num == null) return;
-                    Pair<String, String> pair = new Pair<String, String>(contact_name, contact_num);
-                    Log.d("Test@", "Pair Created 1st=" + contact_name + ", 2nd=" + contact_num);
-                    contacts.set(data.getIntExtra("contact_position",0),pair);
-                    updateContacts();
+                    modifyContact(data.getIntExtra("contact_position", 0), new Contact("", contact_name, contact_num));
+                }
+                break;
+            case REQUEST_CODE_PICK:
+                if(resultCode == Activity.RESULT_OK) {
+                    String phoneNumber = null;
+                    String name = null;
+
+                    Uri contactUri = data.getData();
+                    Cursor cursor = getContext()
+                            .getContentResolver()
+                            .query(contactUri, null, null, null, null);
+
+                    if(cursor != null && cursor.moveToFirst()) {
+                        int numberIndex = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER);
+                        int nameIndex = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME);
+                        phoneNumber = cursor.getString(numberIndex);
+                        name = cursor.getString(nameIndex);
+                        Contact contact = new Contact("", name, phoneNumber);
+                        contacts.add(contact);
+                        updateContacts();
+
+                    }
                 }
                 break;
             case REQUEST_CODE_JSON:
                 if(resultCode == Activity.RESULT_OK) {
                     String json = data.getStringExtra("JSON");
-                    ArrayList<Pair<String, String>> newList = unpackFromJSON(json);
+                    ArrayList<Contact> newList = unpackFromJSON(json);
                     contacts.clear();
                     contacts.addAll(newList);
                     updateContacts();
@@ -337,112 +408,54 @@ public class Tab1Fragment extends Fragment {
 
 
     private void updateContacts() {
-        writeInternalFile("contacts.json", packIntoJSON(contacts));
-        refilterContacts(((EditText)top.findViewById(R.id.searcheditText)).getText().toString());
+        (new SpannableFuzzyFinder(context)).refilterContacts(
+                contacts,
+                shownContacts,
+                ((EditText)top.findViewById(R.id.searcheditText)).getText().toString());
         Collections.sort(shownContacts);
         adapter.notifyDataSetChanged();
     }
 
-    private void refilterContacts(String pattern) {
-        char[] p = pattern.toCharArray();
-        shownContacts.clear();
-        for(int i = 0; i < contacts.size(); i++) {
-            Pair<String, String> x = contacts.get(i);
-            SpannableStringBuilder f_name = fuzzyFind(x.first, p);
-            SpannableStringBuilder f_number = fuzzyFind(x.second, p);
-            if(f_name != null || f_number != null) {
-                if(f_name == null) f_name = new SpannableStringBuilder(x.first);
-                if(f_number == null) f_number = new SpannableStringBuilder(x.second);
-                shownContacts.add(new ListViewAdapter.Item(i, f_name, f_number));
-            }
-        }
+
+    /* Contact List Methods */
+    private void addContact(Contact contact) {
+        httpPostWithId(contact);
+        contacts.add(contact);
+        updateContacts();
     }
 
-    private SpannableStringBuilder fuzzyFind(String s, char[] p) {
-        SpannableStringBuilder res = new SpannableStringBuilder(s);
-        int i;
-        int j = 0;
-        for(i = 0; i < s.length() && j < p.length; i++) {
-            if(fuzzyEqual(s.charAt(i), p[j])) {
-                res.setSpan(new android.text.style.StyleSpan(android.graphics.Typeface.BOLD),
-                        i, i + 1,
-                        Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-                res.setSpan(new ForegroundColorSpan(getResources().getColor(R.color.colorPrimary)),
-                        i, i + 1,
-                        Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-                j++;
-            }
-        }
-        if(j < p.length) return null;
-        return res;
+    private void modifyContact(int index, Contact contact) {
+        httpPutWithId(contact);
+        contacts.set(index, contact);
+        updateContacts();
     }
 
-    private boolean fuzzyEqual(char a, char p) {
-        if(Character.toLowerCase(a) == Character.toLowerCase(p)) /* 영어 ㅕ */
-            return true;
-        else if(0xac00 <= a && a <= 0xd7a3) { /* 한글 */
-            int a_rel = a - 0xac00;
-            int jong = a_rel % 28;
-            int jung = a_rel / 28 % 21;
-            int cho = a_rel / 28 / 21;
-
-            if(0x1100 <= p && p <= 0x11f9) {
-                Log.d("fuzzyEqual@p", "" + (int)(p - 0x1100));
-                if (p <= 0x1112 && cho == p - 0x1100) return true;
-                else return (0x1161 <= p && p <= 0x1175 && jung == p - 0x1161);
-            } else if(0x3131 <= p && p <= 0x3163) {
-                Log.d("fuzzyEqual@p_ext", "" + (int)(p - 0x3131));
-                if(p <= 0x314e && cho == hangulExtToCho(p - 0x3131)) return true;
-                else return (0x314f <= p && jung == p - 0x314f);
-            }
-        }
-        return false;
-    }
-
-    private int hangulExtToCho(int v) {
-        int r = 0;
-        switch(v + 1) {
-            case 0x1e: case 0x1d: case 0x1c: case 0x1b: case 0x1a: case 0x19: case 0x18: case 0x17: case 0x16: case 0x15:
-            case 0x14: r++;
-            case 0x13: case 0x12: case 0x11:
-            case 0x10: r++; case 0x0f: r++; case 0x0e: r++;case 0x0d: r++;case 0x0c: r++;case 0x0b: r++;case 0x0a: r++;
-            case 0x09: case 0x08: case 0x07:
-            case 0x06: r++; case 0x05: r++;
-            case 0x04:
-            case 0x03: r++;
-        }
-        return v - r;
+    private void removeContact(Contact contact) {
+        httpDeleteWithId(contact._id);
+        contacts.remove(contact);
+        updateContacts();
     }
 
 
     /* --- Utility Methods --- */
     /* JSON Parser */
-    private String packIntoJSON(ArrayList<Pair<String, String>> arrayList) {
-        try {
-            JSONArray array = new JSONArray();
-            for(Pair<String, String> p : arrayList) {
-                JSONObject item = new JSONObject();
-                item.put("name", p.first);
-                item.put("phoneNumber", p.second);
-                array.put(item);
-            }
-            return array.toString();
-        } catch(JSONException e) {
-            return "";
+    private String packIntoJSON(ArrayList<Contact> arrayList) {
+        JSONArray array = new JSONArray();
+        for(Contact p : arrayList) {
+            array.put(p.toJSONObject(false));
         }
+        return array.toString();
     }
 
-    private ArrayList<Pair<String, String>> unpackFromJSON(String src) {
-        return appendFromJSON(new ArrayList<Pair<String, String>>(), src);
+    private ArrayList<Contact> unpackFromJSON(String src) {
+        return appendFromJSON(new ArrayList<Contact>(), src);
     }
 
-    private ArrayList<Pair<String, String>> appendFromJSON(ArrayList<Pair<String, String>> arrayList, String src) {
+    private ArrayList<Contact> appendFromJSON(ArrayList<Contact> arrayList, String src) {
         try {
             JSONArray array = new JSONArray(src);
             for(int i = 0; i < array.length(); i++) {
-                JSONObject item = array.getJSONObject(i);
-                Pair<String, String> p = new Pair<>(item.getString("name"), item.getString("phoneNumber"));
-                arrayList.add(p);
+                arrayList.add(Contact.fromJSON(array.getJSONObject(i)));
             }
         } catch(JSONException e) {
             e.printStackTrace();
@@ -450,37 +463,169 @@ public class Tab1Fragment extends Fragment {
         return arrayList;
     }
 
-    /* File Helper */
-    private String readInternalFile(String filename) {
-        FileInputStream fis;
-        InputStreamReader isr;
-        BufferedReader br;
-        StringBuilder sb;
-        String line;
-        try {
-            fis = context.openFileInput(filename);
-            isr = new InputStreamReader(fis);
-            br = new BufferedReader(isr);
-            sb = new StringBuilder();
-            while((line = br.readLine()) != null) {
-                sb.append(line);
-            }
-            fis.close();
-            return sb.toString();
-        } catch(Exception e) {
-            e.printStackTrace();
-            return "";
-        }
+
+    /* Network Helpers */
+    private void loadContacts() {
+        contacts = new ArrayList<>();
+        shownContacts = new ArrayList<>();
+        httpGetWithId();
     }
 
-    private void writeInternalFile(String filename, String contents) {
-        FileOutputStream fos;
-        try {
-            fos = context.openFileOutput(filename, Context.MODE_PRIVATE);
-            fos.write(contents.getBytes());
-            fos.close();
-        } catch(IOException e) {
-            e.printStackTrace();
-        }
+    private void refresh() {
+        httpGetWithId();
+    }
+
+
+    private void httpError() {
+        Log.d("Test@Retrofit", "Failed");
+        Toast.makeText(getActivity(), "Failed to load", Toast.LENGTH_SHORT).show();
+        swipeRefreshLayout.setRefreshing(false);
+    }
+
+
+    public interface HttpGetWithIdService {
+        @GET("api/contacts/{id}")
+        Call<ResponseBody> getUserRepositories(@Path("id") String _id);
+    }
+
+    private void httpGetWithId() {
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl(context.getString(R.string.server_url))
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+        Log.d("Test@GET", "Built");
+
+        HttpGetWithIdService service = retrofit.create(HttpGetWithIdService.class);
+        String userId = AccessToken.getCurrentAccessToken().getUserId();
+        Call<ResponseBody> request = service.getUserRepositories(userId);
+        request.enqueue(new Callback<ResponseBody>() {
+            @Override
+            public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
+                Log.d("Test@Retrofit", "Responsed");
+                try {
+                    ArrayList<Contact> newList = unpackFromJSON(response.body().string());
+                    contacts.clear();
+                    contacts.addAll(newList);
+                    updateContacts();
+                } catch(Exception e) { e.printStackTrace(); }
+                Toast.makeText(getActivity(), "Done", Toast.LENGTH_SHORT).show();
+                swipeRefreshLayout.setRefreshing(false);
+            }
+
+            @Override
+            public void onFailure(Call<ResponseBody> call, Throwable t) {
+                httpError();
+            }
+        });
+    }
+
+    public interface HttpPostWithIdService {
+        @POST("api/contacts/{id}")
+        Call<ResponseBody> getUserRepositories(@Path("id") String _id, @Body RequestBody params);
+    }
+
+    private void httpPostWithId(final Contact contact) {
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl(context.getString(R.string.server_url))
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+        Log.d("Test@GET", "Built");
+
+        HttpPostWithIdService service = retrofit.create(HttpPostWithIdService.class);
+        String userId = AccessToken.getCurrentAccessToken().getUserId();
+
+        RequestBody params = RequestBody.create(okhttp3.MediaType.parse("application/json; charset=utf-8"),
+                contact.toJSON(false));
+
+        Call<ResponseBody> request = service.getUserRepositories(userId, params);
+        request.enqueue(new Callback<ResponseBody>() {
+            @Override
+            public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
+                Log.d("Test@Retrofit", "Responsed");
+                try {
+                    Log.d("Test@Retrofit", response.body().string());
+                } catch(Exception e) { e.printStackTrace(); }
+                Toast.makeText(getActivity(), "Done", Toast.LENGTH_SHORT).show();
+                swipeRefreshLayout.setRefreshing(false);
+            }
+
+            @Override
+            public void onFailure(Call<ResponseBody> call, Throwable t) {
+                httpError();
+            }
+        });
+    }
+
+    public interface HttpPutWithIdService {
+        @PUT("api/contacts/{id}/{contact_id}")
+        Call<ResponseBody> getUserRepositories(@Path("id") String _id, @Path("contact_id") String _cid, @Body RequestBody params);
+    }
+
+    private void httpPutWithId(final Contact contact) {
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl(context.getString(R.string.server_url))
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+        Log.d("Test@GET", "Built");
+
+        HttpPutWithIdService service = retrofit.create(HttpPutWithIdService.class);
+        String userId = AccessToken.getCurrentAccessToken().getUserId();
+
+        RequestBody params = RequestBody.create(okhttp3.MediaType.parse("application/json; charset=utf-8"),
+                contact.toJSON(false));
+
+        Call<ResponseBody> request = service.getUserRepositories(userId, contact._id, params);
+        request.enqueue(new Callback<ResponseBody>() {
+            @Override
+            public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
+                Log.d("Test@Retrofit", "Responsed");
+                try {
+                    Log.d("Test@Retrofit", response.body().string());
+                } catch(Exception e) { e.printStackTrace(); }
+                Toast.makeText(getActivity(), "Done", Toast.LENGTH_SHORT).show();
+                swipeRefreshLayout.setRefreshing(false);
+            }
+
+            @Override
+            public void onFailure(Call<ResponseBody> call, Throwable t) {
+                httpError();
+            }
+        });
+    }
+
+    public interface HttpDeleteWithIdService {
+        @DELETE("api/contacts/{id}/{contact_id}")
+        Call<ResponseBody> getUserRepositories(@Path("id") String _id, @Path("contact_id") String cid);
+    }
+
+    private void httpDeleteWithId(String contactId) {
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl(context.getString(R.string.server_url))
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+        Log.d("Test@GET", "Built");
+
+        HttpDeleteWithIdService service = retrofit.create(HttpDeleteWithIdService.class);
+        String userId = AccessToken.getCurrentAccessToken().getUserId();
+        Call<ResponseBody> request = service.getUserRepositories(userId, contactId);
+        request.enqueue(new Callback<ResponseBody>() {
+            @Override
+            public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
+                Log.d("Test@Retrofit", "Responsed");
+                try {
+                    ArrayList<Contact> newList = unpackFromJSON(response.body().string());
+                    contacts.clear();
+                    contacts.addAll(newList);
+                    updateContacts();
+                } catch(Exception e) { e.printStackTrace(); }
+                Toast.makeText(getActivity(), "Done", Toast.LENGTH_SHORT).show();
+                swipeRefreshLayout.setRefreshing(false);
+            }
+
+            @Override
+            public void onFailure(Call<ResponseBody> call, Throwable t) {
+                httpError();
+            }
+        });
     }
 }

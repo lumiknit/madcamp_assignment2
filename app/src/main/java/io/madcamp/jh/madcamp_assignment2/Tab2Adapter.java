@@ -21,6 +21,7 @@ public class Tab2Adapter extends RecyclerView.Adapter<Tab2Adapter.ImageViewHolde
             super(itemView);
             imageView = itemView.findViewById(R.id.image_view);
             textView = itemView.findViewById(R.id.text_view);
+            itemView.setRotation((float)Math.random() * 4 - 2.f);
         }
 
         void setImage(Uri uri) {

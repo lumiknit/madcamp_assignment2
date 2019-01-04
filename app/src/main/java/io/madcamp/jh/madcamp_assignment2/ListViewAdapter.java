@@ -11,6 +11,7 @@ import android.widget.TextView;
 import java.util.ArrayList;
 
 public class ListViewAdapter extends BaseAdapter {
+
     public static class Item implements Comparable {
         public int index;
         public SpannableStringBuilder name;
@@ -26,17 +27,21 @@ public class ListViewAdapter extends BaseAdapter {
         public int compareTo(Object other) {
             if(other instanceof Item) {
                 return this.name.toString().compareTo(((Item)other).name.toString());
-            } else return 0;
+            } else {
+                return 0;
+            }
         }
     }
 
     ArrayList<Item> data;
+    public int shared;
     private LayoutInflater inflater;
     private int layout;
 
     public ListViewAdapter(Context context, int layout, ArrayList<Item> contacts) {
         this.inflater = (LayoutInflater)context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
         this.data = contacts;
+        this.shared = 0;
         this.layout = layout;
     }
 
@@ -58,7 +63,7 @@ public class ListViewAdapter extends BaseAdapter {
     @Override
     public View getView(int position, View convertView, ViewGroup parent) {
         if(convertView == null){
-            convertView = inflater.inflate(layout,parent,false);
+            convertView = inflater.inflate(layout, parent,false);
         }
 
         Item contact = data.get(position);

@@ -20,6 +20,7 @@ import android.support.design.widget.FloatingActionButton;
 import android.support.media.ExifInterface;
 import android.support.v4.app.Fragment;
 import android.support.v4.content.FileProvider;
+import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
@@ -85,6 +86,15 @@ public class Tab2Fragment extends Fragment {
 
         initializeFloatingActionButton();
         initializeRecyclerView();
+
+        final SwipeRefreshLayout srl = top.findViewById(R.id.swipe_refresh_layout);
+        srl.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
+            @Override
+            public void onRefresh() {
+                Toast.makeText(getActivity(), "Test", Toast.LENGTH_SHORT).show();
+                srl.setRefreshing(false);
+            }
+        });
 
         return top;
     }
@@ -229,7 +239,7 @@ public class Tab2Fragment extends Fragment {
         recyclerView = (RecyclerView)top.findViewById(R.id.recycler_view);
         adapter = new Tab2Adapter(loadImageListFromInternal());
         recyclerView.setHasFixedSize(true);
-        recyclerView.setLayoutManager(new GridLayoutManager(context, 4));
+        recyclerView.setLayoutManager(new GridLayoutManager(context, 3));
         recyclerView.setAdapter(adapter);
 
         recyclerView.addOnItemTouchListener(new RecyclerItemClickListener(

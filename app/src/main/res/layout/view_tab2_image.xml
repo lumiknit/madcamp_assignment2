@@ -9,6 +9,7 @@
     android:focusable="true"
     android:elevation="8dp"
     android:layout_margin="2dp"
+    app:cardCornerRadius="0dp"
     app:cardPreventCornerOverlap="false"
     app:cardUseCompatPadding="true">
 
@@ -26,6 +27,7 @@
                 android:id="@+id/image_view"
                 android:layout_width="0dp"
                 android:layout_height="0dp"
+                android:layout_margin="3dp"
                 android:scaleType="centerCrop"
                 app:layout_constraintTop_toTopOf="parent"
                 app:layout_constraintStart_toStartOf="parent"

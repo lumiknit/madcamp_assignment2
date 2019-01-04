@@ -1,6 +1,10 @@
 <resources>
     <string name="app_name">assignment2</string>
-    <string name="facebook_app_id">524752928016382</string> <string name="fb_login_protocol_scheme">fb524752928016382</string>
+
+    <string name="facebook_app_id">622591011523485</string>
+    <string name="fb_login_protocol_scheme">fb622591011523485</string>
+
+    <string name="server_url">http://143.248.140.106:880/</string>
 
     <string name="tab1_label">연락처</string>
     <string name="tab2_label">갤러리</string>
