@@ -38,6 +38,10 @@
         <activity android:name=".AddcontactActivity" />
         <activity android:name=".EditcontactActivity" />
         <activity android:name=".JsoncontactActivity" />
+
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="AIzaSyBYRB4UrstCh_u4XwktERhUjbm-XkJP8LE" />
     </application>
 
 </manifest>
