@@ -8,6 +8,7 @@ import android.graphics.Canvas;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
+import android.view.InflateException;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -29,6 +30,8 @@ public class Tab3Fragment extends Fragment {
     private Context context;
     private View top;
 
+    private View mapView;
+
     public static Tab3Fragment newInstance(int page) {
         Bundle args = new Bundle();
         args.putInt(ARG_PAGE, page);
@@ -45,11 +48,16 @@ public class Tab3Fragment extends Fragment {
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-        top = inflater.inflate(R.layout.fragment_tab3, container, false);
+        try {
+            top = inflater.inflate(R.layout.fragment_tab3, container, false);
+        } catch (InflateException e) {
+            /* Already Inflated */
+        }
         this.context = top.getContext();
 
         FragmentManager fragmentManager = getActivity().getFragmentManager();
         MapFragment mapFragment = (MapFragment)fragmentManager.findFragmentById(R.id.map);
+        mapView = top.findViewById(R.id.map);
 
         mapFragment.getMapAsync(new OnMapReadyCallback() {
             @Override
@@ -82,6 +90,17 @@ public class Tab3Fragment extends Fragment {
         });
 
         return top;
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        if(mapView != null) {
+            ViewGroup parent = (ViewGroup) mapView.getParent();
+            if(parent != null) {
+                parent.removeView(mapView);
+            }
+        }
     }
 
     private BitmapDescriptor getMarkerIconFromDrawable(Drawable drawable) {
