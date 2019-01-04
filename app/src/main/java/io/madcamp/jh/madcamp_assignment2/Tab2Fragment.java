@@ -372,6 +372,22 @@ public class Tab2Fragment extends Fragment {
         saveImageListToInternal();
     }
 
+    /*private void addToMap(Uri uri){
+        File pic = new File(uri.getPath());
+        String datetime, lat, lng;
+        try{
+            ExifInterface exif = new ExifInterface(pic.getName());
+            datetime = exif.getAttribute(ExifInterface.TAG_DATETIME);
+            lat = exif.getAttribute(ExifInterface.TAG_GPS_LATITUDE);
+            lng = exif.getAttribute(ExifInterface.TAG_GPS_LONGITUDE);
+
+
+        } catch (IOException e){
+            e.printStackTrace();
+        }
+    }*/
+
+
     private Uri copyToInternal(Uri uri) {
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
         String imageFileName = timeStamp + ".jpg";
