@@ -7,6 +7,10 @@ public class Contact {
     public String name;
     public String phoneNumber;
 
+    public Contact(String name, String phoneNumber) {
+        this("-", name, phoneNumber);
+    }
+
     public Contact(String _id, String name, String phoneNumber) {
         this._id = _id;
         this.name = name;

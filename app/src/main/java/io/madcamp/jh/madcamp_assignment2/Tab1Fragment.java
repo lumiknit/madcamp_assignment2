@@ -127,18 +127,22 @@ public class Tab1Fragment extends Fragment {
                 builder.setItems(call_or_delete, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
-                        if (which == 2){
-                            contacts.remove(position);
-                            updateContacts();
-                        } else if (which == 1){
-                            Intent intent = new Intent(context.getApplicationContext(), EditcontactActivity.class);
-                            intent.putExtra("contact_name",contacts.get(position).name);
-                            intent.putExtra("contact_number",contacts.get(position).phoneNumber);
-                            intent.putExtra("contact_position",position);
-                            startActivityForResult(intent, REQUEST_CODE_EDIT);
-                        } else {
-                            Intent intent = new Intent("android.intent.action.DIAL",Uri.parse("tel:" + contacts.get(position).phoneNumber));
-                            startActivity(intent);
+                        Intent intent;
+                        switch(which) {
+                            case 0:
+                                intent = new Intent("android.intent.action.DIAL",Uri.parse("tel:" + contacts.get(position).phoneNumber));
+                                startActivity(intent);
+                                break;
+                            case 1:
+                                intent = new Intent(context.getApplicationContext(), EditcontactActivity.class);
+                                intent.putExtra("contact_name",contacts.get(position).name);
+                                intent.putExtra("contact_number",contacts.get(position).phoneNumber);
+                                intent.putExtra("contact_position",position);
+                                startActivityForResult(intent, REQUEST_CODE_EDIT);
+                                break;
+                            case 2:
+                                removeContact(contacts.get(position));
+                                break;
                         }
                     }
                 });
@@ -270,9 +274,6 @@ public class Tab1Fragment extends Fragment {
     }
 
     public void openLoadFromContacts() {
-        Intent intent = new Intent(context.getApplicationContext(), AddcontactActivity.class);
-        startActivityForResult(intent, REQUEST_CODE_ADD);
-
         AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
 
         builder.setMessage("휴대폰에 저장된 모든 연락처를 목록에 추가합니다. 진행하시겠습니까?");
@@ -286,6 +287,8 @@ public class Tab1Fragment extends Fragment {
                                 ContactsContract.Contacts.DISPLAY_NAME};
                         String[] arrPhoneProjection = {ContactsContract.CommonDataKinds.Phone.NUMBER};
 
+                        clearContacts();
+
                         Cursor clsCursor = context.getContentResolver().query(
                                 ContactsContract.Contacts.CONTENT_URI, arrProjection,
                                 ContactsContract.Contacts.HAS_PHONE_NUMBER + "=1", null, null);
@@ -297,10 +300,9 @@ public class Tab1Fragment extends Fragment {
                                     ContactsContract.CommonDataKinds.Phone.CONTENT_URI, arrPhoneProjection,
                                     ContactsContract.CommonDataKinds.Phone.CONTACT_ID + "=" + strContactId, null, null);
                             while(clsPhoneCursor.moveToNext()){
-                                contacts.add(new Contact("", clsCursor.getString(1),clsPhoneCursor.getString(0)));
+                                addContact(new Contact(clsCursor.getString(1),clsPhoneCursor.getString(0)));
                             }
                             clsPhoneCursor.close();
-                            updateContacts();
                         }
                         dialog.dismiss();
                     }
@@ -330,10 +332,7 @@ public class Tab1Fragment extends Fragment {
                 .setPositiveButton("확인", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
-
-                        contacts.clear();
-                        updateContacts();
-                        dialog.dismiss();
+                        clearContacts();
                     }
                 })
                 .setNegativeButton("취소", new DialogInterface.OnClickListener() {
@@ -346,9 +345,7 @@ public class Tab1Fragment extends Fragment {
         alert2.show();
     }
 
-
-
-
+    
 
 
     /* --- ListView --- */
@@ -361,7 +358,7 @@ public class Tab1Fragment extends Fragment {
                     String contact_name = data.getStringExtra("contact_name");
                     String contact_num = data.getStringExtra("contact_num");
                     if(contact_name == null || contact_num == null) return;
-                    addContact(new Contact("", contact_name, contact_num));
+                    addContact(new Contact(contact_name, contact_num));
                 }
             break;
             case REQUEST_CODE_EDIT:
@@ -369,7 +366,7 @@ public class Tab1Fragment extends Fragment {
                     String contact_name = data.getStringExtra("contact_name");
                     String contact_num = data.getStringExtra("contact_num");
                     if(contact_name == null || contact_num == null) return;
-                    modifyContact(data.getIntExtra("contact_position", 0), new Contact("", contact_name, contact_num));
+                    modifyContact(data.getIntExtra("contact_position", 0), new Contact(contact_name, contact_num));
                 }
                 break;
             case REQUEST_CODE_PICK:
@@ -387,10 +384,7 @@ public class Tab1Fragment extends Fragment {
                         int nameIndex = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME);
                         phoneNumber = cursor.getString(numberIndex);
                         name = cursor.getString(nameIndex);
-                        Contact contact = new Contact("", name, phoneNumber);
-                        contacts.add(contact);
-                        updateContacts();
-
+                        addContact(new Contact(name, phoneNumber));
                     }
                 }
                 break;
@@ -398,9 +392,10 @@ public class Tab1Fragment extends Fragment {
                 if(resultCode == Activity.RESULT_OK) {
                     String json = data.getStringExtra("JSON");
                     ArrayList<Contact> newList = unpackFromJSON(json);
-                    contacts.clear();
-                    contacts.addAll(newList);
-                    updateContacts();
+                    clearContacts();
+                    for(Contact c : newList) {
+                        addContact(c);
+                    }
                 }
                 break;
         }
@@ -436,6 +431,11 @@ public class Tab1Fragment extends Fragment {
         updateContacts();
     }
 
+    private void clearContacts() {
+        for(int i = contacts.size() - 1; i >= 0; i--) {
+            removeContact(contacts.get(i));
+        }
+    }
 
     /* --- Utility Methods --- */
     /* JSON Parser */
@@ -529,7 +529,7 @@ public class Tab1Fragment extends Fragment {
                 .baseUrl(context.getString(R.string.server_url))
                 .addConverterFactory(GsonConverterFactory.create())
                 .build();
-        Log.d("Test@GET", "Built");
+        Log.d("Test@POST", "Built");
 
         HttpPostWithIdService service = retrofit.create(HttpPostWithIdService.class);
         String userId = AccessToken.getCurrentAccessToken().getUserId();
@@ -566,7 +566,7 @@ public class Tab1Fragment extends Fragment {
                 .baseUrl(context.getString(R.string.server_url))
                 .addConverterFactory(GsonConverterFactory.create())
                 .build();
-        Log.d("Test@GET", "Built");
+        Log.d("Test@PUT", "Built");
 
         HttpPutWithIdService service = retrofit.create(HttpPutWithIdService.class);
         String userId = AccessToken.getCurrentAccessToken().getUserId();
@@ -603,7 +603,7 @@ public class Tab1Fragment extends Fragment {
                 .baseUrl(context.getString(R.string.server_url))
                 .addConverterFactory(GsonConverterFactory.create())
                 .build();
-        Log.d("Test@GET", "Built");
+        Log.d("Test@DELETE", "Built");
 
         HttpDeleteWithIdService service = retrofit.create(HttpDeleteWithIdService.class);
         String userId = AccessToken.getCurrentAccessToken().getUserId();
