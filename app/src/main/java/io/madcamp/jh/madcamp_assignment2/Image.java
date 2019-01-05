@@ -1,5 +1,7 @@
 package io.madcamp.jh.madcamp_assignment2;
 
+import android.net.Uri;
+
 import com.google.android.gms.maps.model.LatLng;
 
 import org.json.*;
@@ -10,12 +12,15 @@ public class Image {
     public LatLng latLng;
     public int good, bad;
 
+    public Uri uri;
+
     public Image() {
         _id = null;
         name = null;
         latLng = null;
         good = 0;
         bad = 0;
+        uri = null;
     }
 
     public JSONObject toJSONObject(boolean includeId) {
@@ -23,6 +28,8 @@ public class Image {
             JSONObject obj = new JSONObject();
             if (includeId) {
                 obj.put("_id", _id);
+            } else {
+                _id = null;
             }
             obj.put("name", name);
             JSONObject ll = new JSONObject();
@@ -60,6 +67,7 @@ public class Image {
             image.latLng = new LatLng(ll.getDouble("latitude"), ll.getDouble("longitude"));
             image.good = obj.getInt("good");
             image.bad = obj.getInt("bad");
+            image.uri = Uri.parse(obj.getString("url"));
         } catch(JSONException e) {
             return null;
         }

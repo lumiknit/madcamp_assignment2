@@ -10,12 +10,19 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.request.RequestOptions;
+import com.bumptech.glide.request.target.Target;
+
 import java.util.ArrayList;
+
 
 public class Tab2Adapter extends RecyclerView.Adapter<Tab2Adapter.ImageViewHolder> {
     public static class ImageViewHolder extends RecyclerView.ViewHolder {
         private ImageView imageView;
         private TextView textView;
+
+        private Image image;
 
         ImageViewHolder(View itemView) {
             super(itemView);
@@ -24,31 +31,40 @@ public class Tab2Adapter extends RecyclerView.Adapter<Tab2Adapter.ImageViewHolde
             itemView.setRotation((float)Math.random() * 4 - 2.f);
         }
 
-        void setImage(Uri uri) {
-            imageView.setImageURI(uri);
-        }
-
-        void setTag(String s) {
-            textView.setText(s);
+        void setImage(Image image) {
+            this.image = image;
+            Glide.with(imageView.getContext())
+                    .load(image.uri.toString())
+                    .thumbnail(0.1f)
+                    .into(imageView);
+            textView.setText(image.name);
         }
     }
 
-    public ArrayList<Pair<Uri, String>> dataSet;
+    public ArrayList<Image> dataSet;
 
-    public Tab2Adapter(ArrayList<Pair<Uri, String>> dataSet) {
+    public Tab2Adapter(ArrayList<Image> dataSet) {
         this.dataSet = dataSet;
     }
 
-    public void add(Uri uri, String tag) {
-        dataSet.add(new Pair<>(uri, tag));
+    public void add(Image image) {
+        dataSet.add(image);
         notifyDataSetChanged();
     }
 
-    public Uri remove(int i) {
-        Uri uri = dataSet.get(i).first;
+    public Image remove(int i) {
+        Image image = dataSet.get(i);
         dataSet.remove(i);
         notifyDataSetChanged();
-        return uri;
+        return image;
+    }
+
+    public Image get(int i) {
+        return dataSet.get(i);
+    }
+
+    public ArrayList<Image> getDataSet() {
+        return dataSet;
     }
 
     @NonNull
@@ -61,28 +77,12 @@ public class Tab2Adapter extends RecyclerView.Adapter<Tab2Adapter.ImageViewHolde
 
     @Override
     public void onBindViewHolder(@NonNull ImageViewHolder viewHolder, int i) {
-        Pair<Uri, String> p = dataSet.get(i);
-        viewHolder.setImage(p.first);
-        viewHolder.setTag(p.second);
+        Image p = dataSet.get(i);
+        viewHolder.setImage(p);
     }
 
     @Override
     public int getItemCount() {
         return dataSet.size();
-    }
-
-    public String getOriginalPath(int position) {
-        Uri uri = dataSet.get(position).first;
-        String dir;
-        String filename;
-        try {
-            String thPath = uri.getPath();
-            int i = thPath.lastIndexOf("/");
-            dir = thPath.substring(0, i) + "/";
-            filename = thPath.substring(i + 1);
-        } catch(NullPointerException e) {
-            return null;
-        }
-        return dir + "O_" + filename;
     }
 }

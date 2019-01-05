@@ -8,7 +8,7 @@ public class Contact {
     public String phoneNumber;
 
     public Contact(String name, String phoneNumber) {
-        this("-", name, phoneNumber);
+        this(null, name, phoneNumber);
     }
 
     public Contact(String _id, String name, String phoneNumber) {
@@ -24,7 +24,7 @@ public class Contact {
                 obj.put("_id", _id);
             }
             obj.put("name", name);
-            obj.put("phoneNumber", phoneNumber);
+            obj.put("phone", phoneNumber);
             return obj;
         } catch(JSONException e) {
             e.printStackTrace();
@@ -46,13 +46,12 @@ public class Contact {
         Contact contact = new Contact(null, null, null);
         try {
             contact._id = obj.getString("_id");
-
         } catch(JSONException e) {
             contact._id = null;
         }
         try {
             contact.name = obj.getString("name");
-            contact.phoneNumber = obj.getString("phoneNumber");
+            contact.phoneNumber = obj.getString("phone");
         } catch(JSONException e) {
             return null;
         }

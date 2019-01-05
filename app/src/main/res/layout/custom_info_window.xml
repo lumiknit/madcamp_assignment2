@@ -5,8 +5,10 @@
 
     <ImageView
         android:id="@+id/image_view"
-        android:layout_width="40dp"
-        android:layout_height="match_parent" />
+        android:layout_width="120dp"
+        android:layout_height="120dp"
+        android:scaleType="centerCrop"
+        android:layout_margin="2dp"/>
 
     <LinearLayout
         android:orientation="vertical"

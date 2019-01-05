@@ -6,13 +6,18 @@ import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentStatePagerAdapter;
 
+import java.util.ArrayList;
+
 public class TabPagerAdapter extends FragmentStatePagerAdapter {
     final int PAGE_COUNT = 3;
     private Context context;
 
+    private ArrayList<Image> imageList;
+
     public TabPagerAdapter(FragmentManager fm, Context context) {
         super(fm);
         this.context = context;
+        imageList = new ArrayList<>();
     }
 
     @Override
@@ -24,8 +29,8 @@ public class TabPagerAdapter extends FragmentStatePagerAdapter {
     public Fragment getItem(int position) {
         switch(position) {
             case 0: return Tab1Fragment.newInstance(0);
-            case 1: return Tab2Fragment.newInstance(1);
-            case 2: return Tab3Fragment.newInstance(2);
+            case 1: return Tab2Fragment.newInstance(1, imageList);
+            case 2: return Tab3Fragment.newInstance(2, imageList);
             default: return null;
         }
     }

@@ -1,11 +1,13 @@
 package io.madcamp.jh.madcamp_assignment2;
 
+import android.app.FragmentManager;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.provider.ContactsContract;
 import android.support.annotation.Nullable;
 import android.support.design.widget.TabLayout;
+import android.support.v4.app.Fragment;
 import android.support.v4.view.ViewPager;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
@@ -22,8 +24,10 @@ import com.facebook.FacebookCallback;
 import com.facebook.FacebookException;
 import com.facebook.login.LoginManager;
 import com.facebook.login.LoginResult;
+import com.google.android.gms.maps.MapView;
 import com.google.gson.JsonArray;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 
 import retrofit2.Call;
@@ -60,6 +64,7 @@ public class MainActivity extends AppCompatActivity {
                 public void onSuccess(LoginResult loginResult) {
                     /* Done */
                     Log.d("Test@FB", "onSucc");
+                    LoginHelper.removeDialog();
                 }
 
                 @Override
@@ -72,6 +77,7 @@ public class MainActivity extends AppCompatActivity {
                     });
                     builder.create().show();
                     Log.d("Test@FB", "onCancel");
+                    LoginHelper.removeDialog();
                 }
 
                 @Override
@@ -84,6 +90,7 @@ public class MainActivity extends AppCompatActivity {
                     });
                     builder.create().show();
                     Log.d("Test@FB", "onErr");
+                    LoginHelper.removeDialog();
                 }
             });
             LoginManager.getInstance().logInWithReadPermissions(this, Arrays.asList("public_profile"));
@@ -92,12 +99,28 @@ public class MainActivity extends AppCompatActivity {
 
     private void setupTabs() {
         /* 필요한 View를 불러옴 */
-        ViewPager viewPager = (ViewPager)findViewById(R.id.view_pager);
-        TabLayout tabLayout = (TabLayout)findViewById(R.id.sliding_tabs);
+        final TabLayout tabLayout = (TabLayout)findViewById(R.id.sliding_tabs);
+        final ViewPager viewPager = (ViewPager)findViewById(R.id.view_pager);
+        final TabPagerAdapter adapter = new TabPagerAdapter(getSupportFragmentManager(), MainActivity.this);
         /* TabPagerAdapter 추가 */
-        viewPager.setAdapter(new TabPagerAdapter(getSupportFragmentManager(), MainActivity.this));
+        viewPager.setAdapter(adapter);
         /* tabLayout 초기화 */
         tabLayout.setupWithViewPager(viewPager);
+
+//        viewPager.addOnPageChangeListener(new ViewPager.OnPageChangeListener() {
+//            @Override
+//            public void onPageScrolled(int i, float v, int i1) { }
+//            @Override
+//            public void onPageSelected(int i) {
+//                if(i == 2) {
+//                    /* Load List */
+//                    Tab3Fragment frag3 = (Tab3Fragment)adapter.getItem(2);
+//                    frag3.updateMarkers();
+//                }
+//            }
+//            @Override
+//            public void onPageScrollStateChanged(int i) { }
+//        });
     }
 
     @Override

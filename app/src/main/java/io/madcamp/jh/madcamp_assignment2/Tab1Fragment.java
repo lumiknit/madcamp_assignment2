@@ -345,7 +345,7 @@ public class Tab1Fragment extends Fragment {
         alert2.show();
     }
 
-    
+
 
 
     /* --- ListView --- */
@@ -453,9 +453,14 @@ public class Tab1Fragment extends Fragment {
 
     private ArrayList<Contact> appendFromJSON(ArrayList<Contact> arrayList, String src) {
         try {
+            Log.d("Test@JSON_Input", src);
             JSONArray array = new JSONArray(src);
             for(int i = 0; i < array.length(); i++) {
-                arrayList.add(Contact.fromJSON(array.getJSONObject(i)));
+                Contact contact = Contact.fromJSON(array.getJSONObject(i));
+                if(contact == null) {
+                    throw new JSONException("Malformed JSON");
+                }
+                arrayList.add(contact);
             }
         } catch(JSONException e) {
             e.printStackTrace();
@@ -489,6 +494,7 @@ public class Tab1Fragment extends Fragment {
     }
 
     private void httpGetWithId() {
+        if(!LoginHelper.checkRegistered(getActivity())) return;
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl(context.getString(R.string.server_url))
                 .addConverterFactory(GsonConverterFactory.create())
@@ -503,10 +509,16 @@ public class Tab1Fragment extends Fragment {
             public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
                 Log.d("Test@Retrofit", "Responsed");
                 try {
-                    ArrayList<Contact> newList = unpackFromJSON(response.body().string());
+                    String src = response.body().string();
+                    Log.d("Test@RetrofitResult", src);
+                    ArrayList<Contact> newList = unpackFromJSON(src);
+                    Log.d("Test@RetrofitResult", "N = " + newList.size());
                     contacts.clear();
+                    Log.d("Test@RetrofitResult", "Cleared");
                     contacts.addAll(newList);
+                    Log.d("Test@RetrofitResult", "Added");
                     updateContacts();
+                    Log.d("Test@RetrofitResult", "Updated");
                 } catch(Exception e) { e.printStackTrace(); }
                 Toast.makeText(getActivity(), "Done", Toast.LENGTH_SHORT).show();
                 swipeRefreshLayout.setRefreshing(false);

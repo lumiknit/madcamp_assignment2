@@ -24,7 +24,6 @@ import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
-import android.util.Pair;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -37,16 +36,18 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.request.RequestOptions;
+import com.bumptech.glide.request.target.Target;
+import com.google.android.gms.maps.model.LatLng;
 
 public class Tab2Fragment extends Fragment {
     public static final String ARG_PAGE = "ARG_PAGE";
@@ -60,16 +61,18 @@ public class Tab2Fragment extends Fragment {
     private static final int REQ_TAKE_PHOTO = 2;
 
     private RecyclerView recyclerView;
-    private Tab2Adapter adapter;
+    private ArrayList<Image> imageList;
+    public Tab2Adapter adapter;
 
     private Uri tempPhotoUri;
 
     /* TabPagerAdapter에서 Fragment 생성할 때 사용하는 메소드 */
-    public static Tab2Fragment newInstance(int page) {
+    public static Tab2Fragment newInstance(int page, ArrayList<Image> imageList) {
         Bundle args = new Bundle();
         args.putInt(ARG_PAGE, page);
         Tab2Fragment fragment = new Tab2Fragment();
         fragment.setArguments(args);
+        fragment.imageList = imageList;
         return fragment;
     }
 
@@ -162,6 +165,7 @@ public class Tab2Fragment extends Fragment {
 
     final static String listPath = "images.json";
 
+    /*
     public void saveImageListToInternal() {
         FileOutputStream fos;
         try {
@@ -199,18 +203,18 @@ public class Tab2Fragment extends Fragment {
         }
         return list;
     }
+    */
 
     private String packJSON() {
         try {
             JSONArray arr = new JSONArray();
-            ArrayList<Pair<Uri, String>> list = adapter.dataSet;
+            ArrayList<Image> list = adapter.dataSet;
             if(list != null) {
-                for (Pair<Uri, String> p : list) {
-                    JSONObject item = new JSONObject();
-                    String path = p.first.getPath();
-                    Log.d("path", path);
-                    item.put("uri", path);
-                    item.put("tag", p.second.toString());
+                for (Image p : list) {
+                    JSONObject item = p.toJSONObject(false);
+                    if(item == null) {
+                        throw new JSONException("Malformed Image");
+                    }
                     arr.put(item);
                 }
             }
@@ -221,14 +225,13 @@ public class Tab2Fragment extends Fragment {
         return null;
     }
 
-    private void unpackJSON(String src, ArrayList<Pair<Uri, String>> list) {
+    private void unpackJSON(String src, ArrayList<Image> list) {
         try {
             JSONArray arr = new JSONArray(src);
             for(int i = 0; i < arr.length(); i++) {
                 JSONObject item = arr.getJSONObject(i);
-                Uri uri = Uri.parse(item.getString("uri"));
-                String tag = item.getString("tag");
-                list.add(new Pair<>(uri, tag));
+                Image image = Image.fromJSON(item);
+                list.add(image);
             }
         } catch(JSONException e) {
             Log.d("Exception", "JSON Parsing Failed");
@@ -236,8 +239,9 @@ public class Tab2Fragment extends Fragment {
     }
 
     public void initializeRecyclerView() {
-        recyclerView = (RecyclerView)top.findViewById(R.id.recycler_view);
-        adapter = new Tab2Adapter(loadImageListFromInternal());
+        recyclerView = top.findViewById(R.id.recycler_view);
+        // adapter = new Tab2Adapter(loadImageListFromInternal());
+        adapter = new Tab2Adapter(imageList);
         recyclerView.setHasFixedSize(true);
         recyclerView.setLayoutManager(new GridLayoutManager(context, 3));
         recyclerView.setAdapter(adapter);
@@ -250,9 +254,13 @@ public class Tab2Fragment extends Fragment {
                 dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.argb(100, 0, 0, 0)));
                 dialog.setContentView(R.layout.dialog_image);
 
-                String oriPath = adapter.getOriginalPath(position);
-                ((ImageView)dialog.findViewById(R.id.image_view)).setImageURI(Uri.parse(oriPath));
-                Log.d("Test@oriPath", oriPath);
+                Image image = adapter.get(position);
+                Glide.with(getActivity())
+                        .load(image.uri.toString())
+                        .thumbnail(0.1f)
+                        .apply(new RequestOptions().override(Target.SIZE_ORIGINAL))
+                        .into((ImageView)dialog.findViewById(R.id.image_view));
+                Log.d("Test@uri", image.uri.toString());
 
                 dialog.findViewById(R.id.blank).setOnClickListener(new View.OnClickListener() {
                     @Override
@@ -320,12 +328,7 @@ public class Tab2Fragment extends Fragment {
 
     private void removeItem(int idx) {
         if(idx < 0 || idx >= adapter.dataSet.size()) return;
-        Uri uri = adapter.remove(idx);
-        File file = new File(uri.getPath());
-        if(file.exists() && file.delete()) {
-            Log.d("Delete File", uri.getPath());
-        }
-        saveImageListToInternal();
+        Image image = adapter.remove(idx);
     }
 
     private void removeAllItems() {
@@ -377,29 +380,19 @@ public class Tab2Fragment extends Fragment {
     }
 
     private void addImage(Uri uri) {
-        Uri newUri = copyToInternal(uri);
-        adapter.add(newUri, new SimpleDateFormat("yyMMdd_HHmmss").format(new Date()));
-        saveImageListToInternal();
+        Image image = copyToInternal(uri);
+        if(image != null) {
+            adapter.add(image);
+        } else {
+            Log.d("Test@addImage", "Failed");
+        }
     }
 
-    /*private void addToMap(Uri uri){
-        File pic = new File(uri.getPath());
-        String datetime, lat, lng;
-        try{
-            ExifInterface exif = new ExifInterface(pic.getName());
-            datetime = exif.getAttribute(ExifInterface.TAG_DATETIME);
-            lat = exif.getAttribute(ExifInterface.TAG_GPS_LATITUDE);
-            lng = exif.getAttribute(ExifInterface.TAG_GPS_LONGITUDE);
 
-
-        } catch (IOException e){
-            e.printStackTrace();
-        }
-    }*/
-
-
-    private Uri copyToInternal(Uri uri) {
-        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+    private Image copyToInternal(Uri uri) {
+        Image image = new Image();
+        String timeStamp = getTime();
+        image.name = timeStamp;
         String imageFileName = timeStamp + ".jpg";
         try {
             Bitmap bitmap = MediaStore.Images.Media.getBitmap(context.getContentResolver(), uri);
@@ -419,32 +412,31 @@ public class Tab2Fragment extends Fragment {
                     case ExifInterface.ORIENTATION_ROTATE_270: angle = 270.f; break;
                 }
                 matrix.postRotate(angle);
+
+                double[] ll = ei.getLatLong();
+                if(ll != null) {
+                    LatLng latLng = new LatLng(ll[0], ll[1]);
+                    image.latLng = latLng;
+                    Log.d("Test@LL", "lat: " + latLng.latitude + ", lng: " + latLng.longitude);
+                } else {
+                    Log.d("Test@LL", "NOTHING");
+                }
             }
 
             Bitmap rotated = Bitmap.createBitmap(bitmap, 0, 0, width, height, matrix, false);
-            FileOutputStream fosRotated = context.openFileOutput("O_" + imageFileName, Context.MODE_PRIVATE);
+            FileOutputStream fosRotated = context.openFileOutput(imageFileName, Context.MODE_PRIVATE);
             rotated.compress(Bitmap.CompressFormat.JPEG, 100, fosRotated);
             fosRotated.close();
 
-            /* scaling */
-            float scaleFactor = 1.f;
-            if(width < height) scaleFactor = 256.f / (float)width;
-            else scaleFactor = 256.f / (float)height;
-
-            if(scaleFactor < 1.f) {
-                matrix.postScale(scaleFactor, scaleFactor);
-            }
-
-            Bitmap resized = Bitmap.createBitmap(bitmap, 0, 0, width, height, matrix, false);
-
-            FileOutputStream fos = context.openFileOutput(imageFileName, Context.MODE_PRIVATE);
-            resized.compress(Bitmap.CompressFormat.JPEG, 100, fos);
-            fos.close();
-            Uri newUri = Uri.parse(context.getFileStreamPath(imageFileName).getAbsolutePath());
-            return newUri;
+            image.uri = Uri.parse(context.getFileStreamPath(imageFileName).getAbsolutePath());
+            return image;
         } catch(IOException e) {
             e.printStackTrace();
             return null;
         }
+    }
+
+    private String getTime() {
+        return new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
     }
 }
