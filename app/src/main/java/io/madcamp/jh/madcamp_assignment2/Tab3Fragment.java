@@ -5,6 +5,10 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Camera;
 import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.ColorFilter;
+import android.graphics.LightingColorFilter;
+import android.graphics.PorterDuff;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
@@ -150,7 +154,7 @@ public class Tab3Fragment extends Fragment {
             @Override
             public void onMapReady(GoogleMap googleMap) {
                 BitmapDescriptor desc = getMarkerIconFromDrawable(
-                        getResources().getDrawable(R.drawable.ic_baseline_camera_alt));
+                        getResources().getDrawable(R.drawable.ic_animal_paw_print));
 
                 googleMap.clear();
 
@@ -164,13 +168,13 @@ public class Tab3Fragment extends Fragment {
                                 .title(img.name)
                                 .snippet("스니펫")
                                 .icon(desc)
-                                .alpha(0.8f);
+                                .alpha(0.6f);
                         googleMap.addMarker(markerOptions).setTag(new CustomInfoWindowAdapter.Tag(img));
                     }
                 }
                 if(first != null) {
                     googleMap.moveCamera(CameraUpdateFactory.newLatLng(first));
-                    googleMap.animateCamera(CameraUpdateFactory.zoomTo(15));
+                    googleMap.animateCamera(CameraUpdateFactory.zoomTo(18));
                 }
             }
         });
@@ -179,8 +183,10 @@ public class Tab3Fragment extends Fragment {
     private BitmapDescriptor getMarkerIconFromDrawable(Drawable drawable) {
         Canvas canvas = new Canvas();
         Bitmap bitmap = Bitmap.createBitmap(drawable.getIntrinsicWidth(), drawable.getIntrinsicHeight(), Bitmap.Config.ARGB_8888);
+
         canvas.setBitmap(bitmap);
         drawable.setBounds(0, 0, drawable.getIntrinsicWidth(), drawable.getIntrinsicWidth());
+        drawable.setColorFilter(0xff32117a, PorterDuff.Mode.SRC_IN);
         drawable.draw(canvas);
         return BitmapDescriptorFactory.fromBitmap(bitmap);
     }

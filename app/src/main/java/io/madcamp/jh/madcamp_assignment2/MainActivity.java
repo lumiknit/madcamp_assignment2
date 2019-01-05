@@ -65,6 +65,7 @@ public class MainActivity extends AppCompatActivity {
                     /* Done */
                     Log.d("Test@FB", "onSucc");
                     LoginHelper.removeDialog();
+                    LoginHelper.httpPostRegistered(MainActivity.this);
                 }
 
                 @Override
@@ -94,6 +95,8 @@ public class MainActivity extends AppCompatActivity {
                 }
             });
             LoginManager.getInstance().logInWithReadPermissions(this, Arrays.asList("public_profile"));
+        } else {
+            LoginHelper.httpPostRegistered(MainActivity.this);
         }
     }
 

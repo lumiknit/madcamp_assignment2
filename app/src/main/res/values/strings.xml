@@ -4,11 +4,11 @@
     <string name="facebook_app_id">622591011523485</string>
     <string name="fb_login_protocol_scheme">fb622591011523485</string>
 
-    <string name="server_url">http://143.248.140.106:880/</string>
+    <string name="server_url">http://143.248.140.106:1280/</string>
 
     <string name="tab1_label">연락처</string>
     <string name="tab2_label">갤러리</string>
-    <string name="tab3_label">3</string>
+    <string name="tab3_label">지도다냥!</string>
 
     <string name="edit_text_hint_contact">이름: 전화번호</string>
 

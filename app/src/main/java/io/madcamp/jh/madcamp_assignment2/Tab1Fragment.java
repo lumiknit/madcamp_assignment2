@@ -19,7 +19,6 @@ import android.support.v4.widget.SwipeRefreshLayout;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
-import android.util.Pair;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -34,16 +33,10 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.BufferedReader;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Collections;
 
 import com.facebook.AccessToken;
-import com.google.gson.JsonArray;
 
 import okhttp3.RequestBody;
 import okhttp3.ResponseBody;
@@ -195,11 +188,11 @@ public class Tab1Fragment extends Fragment {
         final FloatingActionButton[] fab = new FloatingActionButton[5];
 
         /* Find every floating action buttons */
-        fab[0] = (FloatingActionButton)top.findViewById(R.id.fab);
-        fab[1] = (FloatingActionButton)top.findViewById(R.id.fab1);
-        fab[2] = (FloatingActionButton)top.findViewById(R.id.fab2);
-        fab[3] = (FloatingActionButton)top.findViewById(R.id.fab3);
-        fab[4] = (FloatingActionButton)top.findViewById(R.id.fab4);
+        fab[0] = top.findViewById(R.id.fab);
+        fab[1] = top.findViewById(R.id.fab1);
+        fab[2] = top.findViewById(R.id.fab2);
+        fab[3] = top.findViewById(R.id.fab3);
+        fab[4] = top.findViewById(R.id.fab4);
 
         if (ContextCompat.checkSelfPermission(getActivity(),Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) {
         } else{
@@ -282,12 +275,12 @@ public class Tab1Fragment extends Fragment {
                 .setPositiveButton("확인", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
+                        clearContacts();
+
                         String[] arrProjection = {
                                 ContactsContract.Contacts._ID,
                                 ContactsContract.Contacts.DISPLAY_NAME};
                         String[] arrPhoneProjection = {ContactsContract.CommonDataKinds.Phone.NUMBER};
-
-                        clearContacts();
 
                         Cursor clsCursor = context.getContentResolver().query(
                                 ContactsContract.Contacts.CONTENT_URI, arrProjection,
@@ -346,8 +339,6 @@ public class Tab1Fragment extends Fragment {
     }
 
 
-
-
     /* --- ListView --- */
     @Override
     public void onActivityResult(int requestCode,int resultCode, Intent data) {
@@ -363,10 +354,12 @@ public class Tab1Fragment extends Fragment {
             break;
             case REQUEST_CODE_EDIT:
                 if(resultCode == Activity.RESULT_OK){
+                    int position = data.getIntExtra("contact_position", 0);
+                    String _id = contacts.get(position)._id;
                     String contact_name = data.getStringExtra("contact_name");
                     String contact_num = data.getStringExtra("contact_num");
                     if(contact_name == null || contact_num == null) return;
-                    modifyContact(data.getIntExtra("contact_position", 0), new Contact(contact_name, contact_num));
+                    modifyContact(data.getIntExtra("contact_position", 0), new Contact(_id, contact_name, contact_num));
                 }
                 break;
             case REQUEST_CODE_PICK:
@@ -414,19 +407,30 @@ public class Tab1Fragment extends Fragment {
 
     /* Contact List Methods */
     private void addContact(Contact contact) {
-        httpPostWithId(contact);
-        contacts.add(contact);
+        httpPutWithId(contact, false);
+        int i;
+        for(i = contacts.size() - 1; i >= 0; i--) {
+            if(contact.name.equals(contacts.get(i).name)) {
+                break;
+            }
+        }
+        if(i >= 0) {
+            contacts.get(i).phoneNumber = contact.phoneNumber;
+        } else {
+            contacts.add(contact);
+        }
+
         updateContacts();
     }
 
     private void modifyContact(int index, Contact contact) {
-        httpPutWithId(contact);
+        httpPutWithId(contact, true);
         contacts.set(index, contact);
         updateContacts();
     }
 
     private void removeContact(Contact contact) {
-        httpDeleteWithId(contact._id);
+        httpDeleteWithId(contact.name);
         contacts.remove(contact);
         updateContacts();
     }
@@ -461,6 +465,7 @@ public class Tab1Fragment extends Fragment {
                     throw new JSONException("Malformed JSON");
                 }
                 arrayList.add(contact);
+                Log.d("Test@aFJ", "" + contact._id);
             }
         } catch(JSONException e) {
             e.printStackTrace();
@@ -468,6 +473,26 @@ public class Tab1Fragment extends Fragment {
         return arrayList;
     }
 
+    private ArrayList<Contact> unpackFromJSON2(String src) {
+        ArrayList<Contact> arrayList = null;
+        try {
+            arrayList = new ArrayList<Contact>();
+            Log.d("Test@JSON_Input", src);
+            JSONObject obj = new JSONObject(src);
+            JSONArray array = obj.getJSONArray("contacts");
+            for(int i = 0; i < array.length(); i++) {
+                Contact contact = Contact.fromJSON(array.getJSONObject(i));
+                if(contact == null) {
+                    throw new JSONException("Malformed JSON");
+                }
+                arrayList.add(contact);
+                Log.d("Test@aFJ", "" + contact._id);
+            }
+        } catch(JSONException e) {
+            e.printStackTrace();
+        }
+        return arrayList;
+    }
 
     /* Network Helpers */
     private void loadContacts() {
@@ -511,7 +536,7 @@ public class Tab1Fragment extends Fragment {
                 try {
                     String src = response.body().string();
                     Log.d("Test@RetrofitResult", src);
-                    ArrayList<Contact> newList = unpackFromJSON(src);
+                    ArrayList<Contact> newList = unpackFromJSON2(src);
                     Log.d("Test@RetrofitResult", "N = " + newList.size());
                     contacts.clear();
                     Log.d("Test@RetrofitResult", "Cleared");
@@ -527,6 +552,7 @@ public class Tab1Fragment extends Fragment {
             @Override
             public void onFailure(Call<ResponseBody> call, Throwable t) {
                 httpError();
+                swipeRefreshLayout.setRefreshing(false);
             }
         });
     }
@@ -564,16 +590,17 @@ public class Tab1Fragment extends Fragment {
             @Override
             public void onFailure(Call<ResponseBody> call, Throwable t) {
                 httpError();
+                swipeRefreshLayout.setRefreshing(false);
             }
         });
     }
 
     public interface HttpPutWithIdService {
-        @PUT("api/contacts/{id}/{contact_id}")
-        Call<ResponseBody> getUserRepositories(@Path("id") String _id, @Path("contact_id") String _cid, @Body RequestBody params);
+        @PUT("api/contacts/{id}")
+        Call<ResponseBody> getUserRepositories(@Path("id") String _id, @Body RequestBody params);
     }
 
-    private void httpPutWithId(final Contact contact) {
+    private void httpPutWithId(final Contact contact, boolean includeId) {
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl(context.getString(R.string.server_url))
                 .addConverterFactory(GsonConverterFactory.create())
@@ -583,16 +610,23 @@ public class Tab1Fragment extends Fragment {
         HttpPutWithIdService service = retrofit.create(HttpPutWithIdService.class);
         String userId = AccessToken.getCurrentAccessToken().getUserId();
 
-        RequestBody params = RequestBody.create(okhttp3.MediaType.parse("application/json; charset=utf-8"),
-                contact.toJSON(false));
+        includeId = false;
+        String s = contact.toJSON(includeId);
 
-        Call<ResponseBody> request = service.getUserRepositories(userId, contact._id, params);
+        RequestBody params = RequestBody.create(okhttp3.MediaType.parse("application/json; charset=utf-8"),
+                s);
+        Log.d("Test@includeId", "" + includeId + ":");
+        Log.d("Test@includeId", "" + includeId + ":" + s);
+
+        Call<ResponseBody> request = service.getUserRepositories(userId, params);
         request.enqueue(new Callback<ResponseBody>() {
             @Override
             public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
                 Log.d("Test@Retrofit", "Responsed");
                 try {
-                    Log.d("Test@Retrofit", response.body().string());
+                    String body = response.body().string();
+                    Log.d("Test@Retrofit", body);
+                    contact.loadFromJSON(new JSONObject(body));
                 } catch(Exception e) { e.printStackTrace(); }
                 Toast.makeText(getActivity(), "Done", Toast.LENGTH_SHORT).show();
                 swipeRefreshLayout.setRefreshing(false);
@@ -601,16 +635,17 @@ public class Tab1Fragment extends Fragment {
             @Override
             public void onFailure(Call<ResponseBody> call, Throwable t) {
                 httpError();
+                swipeRefreshLayout.setRefreshing(false);
             }
         });
     }
 
     public interface HttpDeleteWithIdService {
-        @DELETE("api/contacts/{id}/{contact_id}")
-        Call<ResponseBody> getUserRepositories(@Path("id") String _id, @Path("contact_id") String cid);
+        @DELETE("api/contacts/{id}/{name}")
+        Call<ResponseBody> getUserRepositories(@Path("id") String _id, @Path("name") String name);
     }
 
-    private void httpDeleteWithId(String contactId) {
+    private void httpDeleteWithId(final String name) {
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl(context.getString(R.string.server_url))
                 .addConverterFactory(GsonConverterFactory.create())
@@ -619,16 +654,22 @@ public class Tab1Fragment extends Fragment {
 
         HttpDeleteWithIdService service = retrofit.create(HttpDeleteWithIdService.class);
         String userId = AccessToken.getCurrentAccessToken().getUserId();
-        Call<ResponseBody> request = service.getUserRepositories(userId, contactId);
+        Call<ResponseBody> request = service.getUserRepositories(userId, name);
         request.enqueue(new Callback<ResponseBody>() {
             @Override
             public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
                 Log.d("Test@Retrofit", "Responsed");
                 try {
-                    ArrayList<Contact> newList = unpackFromJSON(response.body().string());
-                    contacts.clear();
-                    contacts.addAll(newList);
-                    updateContacts();
+                    int i;
+                    for(i = 0; i < contacts.size(); i++) {
+                        if(contacts.get(i).name.equals(name)) {
+                            break;
+                        }
+                    }
+                    if(i < contacts.size()) {
+                        contacts.remove(i);
+                        updateContacts();
+                    }
                 } catch(Exception e) { e.printStackTrace(); }
                 Toast.makeText(getActivity(), "Done", Toast.LENGTH_SHORT).show();
                 swipeRefreshLayout.setRefreshing(false);
@@ -637,6 +678,7 @@ public class Tab1Fragment extends Fragment {
             @Override
             public void onFailure(Call<ResponseBody> call, Throwable t) {
                 httpError();
+                swipeRefreshLayout.setRefreshing(false);
             }
         });
     }

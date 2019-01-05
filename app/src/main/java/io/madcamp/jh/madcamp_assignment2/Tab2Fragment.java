@@ -23,6 +23,7 @@ import android.support.v4.content.FileProvider;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.util.Base64;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -36,6 +37,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -47,7 +49,19 @@ import java.util.Date;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.request.RequestOptions;
 import com.bumptech.glide.request.target.Target;
+import com.facebook.AccessToken;
 import com.google.android.gms.maps.model.LatLng;
+
+import okhttp3.RequestBody;
+import okhttp3.ResponseBody;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+import retrofit2.Retrofit;
+import retrofit2.converter.gson.GsonConverterFactory;
+import retrofit2.http.Body;
+import retrofit2.http.GET;
+import retrofit2.http.Path;
 
 public class Tab2Fragment extends Fragment {
     public static final String ARG_PAGE = "ARG_PAGE";
@@ -60,6 +74,7 @@ public class Tab2Fragment extends Fragment {
     private static final int REQ_IMG_FILE = 1;
     private static final int REQ_TAKE_PHOTO = 2;
 
+    private SwipeRefreshLayout swipeRefreshLayout;
     private RecyclerView recyclerView;
     private ArrayList<Image> imageList;
     public Tab2Adapter adapter;
@@ -85,7 +100,7 @@ public class Tab2Fragment extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         top = inflater.inflate(R.layout.fragment_tab2, container, false);
-        this.context = (Context)getActivity();
+        this.context = getActivity();
 
         initializeFloatingActionButton();
         initializeRecyclerView();
@@ -163,9 +178,11 @@ public class Tab2Fragment extends Fragment {
         }
     }
 
+    /*
+
     final static String listPath = "images.json";
 
-    /*
+
     public void saveImageListToInternal() {
         FileOutputStream fos;
         try {
@@ -424,6 +441,12 @@ public class Tab2Fragment extends Fragment {
             }
 
             Bitmap rotated = Bitmap.createBitmap(bitmap, 0, 0, width, height, matrix, false);
+
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            rotated.compress(Bitmap.CompressFormat.JPEG, 95, baos);
+            byte[] byteArray = baos.toByteArray();
+            byte[] encoded = Base64.encode(byteArray, Base64.DEFAULT);
+
             FileOutputStream fosRotated = context.openFileOutput(imageFileName, Context.MODE_PRIVATE);
             rotated.compress(Bitmap.CompressFormat.JPEG, 100, fosRotated);
             fosRotated.close();
@@ -438,5 +461,50 @@ public class Tab2Fragment extends Fragment {
 
     private String getTime() {
         return new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+    }
+
+
+    /* Networking */
+    private void httpError() {
+        Log.d("Test@Retrofit", "Failed");
+        Toast.makeText(getActivity(), "Failed to load", Toast.LENGTH_SHORT).show();
+        swipeRefreshLayout.setRefreshing(false);
+    }
+
+    public interface HttpGetWithIdService {
+        @GET("api/photos")
+        Call<ResponseBody> getUserRepositories(@Body RequestBody params);
+    }
+    public void httpPostImage(byte[] encoded) {
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl(context.getString(R.string.server_url))
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+        Log.d("Test@POST", "Built");
+
+        Tab1Fragment.HttpPostWithIdService service = retrofit.create(Tab1Fragment.HttpPostWithIdService.class);
+        String userId = AccessToken.getCurrentAccessToken().getUserId();
+
+        RequestBody params = RequestBody.create(okhttp3.MediaType.parse("application/json; charset=utf-8"),
+                "aaa");
+
+        Call<ResponseBody> request = service.getUserRepositories(userId, params);
+        request.enqueue(new Callback<ResponseBody>() {
+            @Override
+            public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
+                Log.d("Test@Retrofit", "Responsed");
+                try {
+                    Log.d("Test@Retrofit", response.body().string());
+                } catch(Exception e) { e.printStackTrace(); }
+                Toast.makeText(getActivity(), "Done", Toast.LENGTH_SHORT).show();
+                swipeRefreshLayout.setRefreshing(false);
+            }
+
+            @Override
+            public void onFailure(Call<ResponseBody> call, Throwable t) {
+                httpError();
+                swipeRefreshLayout.setRefreshing(false);
+            }
+        });
     }
 }

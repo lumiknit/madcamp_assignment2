@@ -15,22 +15,58 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
-        <android.support.v7.widget.CardView
-            android:layout_width="wrap_content"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:orientation="vertical"
             android:layout_centerHorizontal="true"
-            android:layout_centerVertical="true"
-            app:cardBackgroundColor="@android:color/white"
-            app:cardElevation="5dp"
-            app:cardCornerRadius="0dp"
-            android:layout_margin="5dp">
+            android:layout_centerVertical="true">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="10dp"
+                android:layout_marginRight="10dp"
+                android:orientation="horizontal">
+                <TextView
+                    android:id="@+id/text_view_vote_down"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:textColor="#ff0000"
+                    android:clickable="true"
+                    android:text="고양이가 아니잖아"/>
+                <TextView
+                    android:id="@+id/text_view_vote_upa"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:textAlignment="textEnd"
+                    android:textColor="#00ff00"
+                    android:gravity="end"
+                    android:clickable="true"
+                    android:text="추천"/>
+            </LinearLayout>
 
-            <ImageView
-                android:id="@+id/image_view"
+            <android.support.v7.widget.CardView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_margin="5dp"
-                android:adjustViewBounds="true" />
-        </android.support.v7.widget.CardView>
+
+                app:cardBackgroundColor="@android:color/white"
+                app:cardElevation="5dp"
+                app:cardCornerRadius="0dp"
+                android:layout_margin="5dp">
+
+                <ImageView
+                    android:id="@+id/image_view"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_margin="5dp"
+                    android:adjustViewBounds="true" />
+            </android.support.v7.widget.CardView>
+        </LinearLayout>
     </RelativeLayout>
 </FrameLayout>

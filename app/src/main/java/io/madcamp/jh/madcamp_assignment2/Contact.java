@@ -1,5 +1,7 @@
 package io.madcamp.jh.madcamp_assignment2;
 
+import android.util.Log;
+
 import org.json.*;
 
 public class Contact {
@@ -20,7 +22,7 @@ public class Contact {
     public JSONObject toJSONObject(boolean includeId) {
         try {
             JSONObject obj = new JSONObject();
-            if (includeId) {
+            if (includeId && _id != null) {
                 obj.put("_id", _id);
             }
             obj.put("name", name);
@@ -42,19 +44,21 @@ public class Contact {
         }
     }
 
+    public void loadFromJSON(JSONObject obj) {
+        try {
+            if(obj.has("_id"))
+                _id = obj.getString("_id");
+            if(obj.has("name"))
+                name = obj.getString("name");
+            if(obj.has("phone"))
+                phoneNumber = obj.getString("phone");
+        } catch(JSONException e) {
+        }
+    }
+
     public static Contact fromJSON(JSONObject obj) {
         Contact contact = new Contact(null, null, null);
-        try {
-            contact._id = obj.getString("_id");
-        } catch(JSONException e) {
-            contact._id = null;
-        }
-        try {
-            contact.name = obj.getString("name");
-            contact.phoneNumber = obj.getString("phone");
-        } catch(JSONException e) {
-            return null;
-        }
+        contact.loadFromJSON(obj);
         return contact;
     }
 }

@@ -9,7 +9,10 @@
         android:layout_height="wrap_content"
         android:ems="10"
         android:hint="이름"
-        android:inputType="textPersonName" />
+        android:inputType="textPersonName"
+        android:focusableInTouchMode="false"
+        android:textColor="#808080"
+        android:textStyle="bold"/>
 
     <EditText
         android:id="@+id/number_edittext"

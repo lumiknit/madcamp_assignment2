@@ -9,14 +9,15 @@ import org.json.*;
 public class Image {
     public String _id;
     public String name;
+    public String owner;
     public LatLng latLng;
     public int good, bad;
-
     public Uri uri;
 
     public Image() {
         _id = null;
         name = null;
+        owner = null;
         latLng = null;
         good = 0;
         bad = 0;
@@ -26,18 +27,21 @@ public class Image {
     public JSONObject toJSONObject(boolean includeId) {
         try {
             JSONObject obj = new JSONObject();
-            if (includeId) {
+            if (includeId && _id != null) {
                 obj.put("_id", _id);
             } else {
                 _id = null;
             }
-            obj.put("name", name);
-            JSONObject ll = new JSONObject();
-            ll.put("latitude", latLng.latitude);
-            ll.put("longitude", latLng.longitude);
-            obj.put("latLng", ll);
+            if(name != null)
+                obj.put("name", name);
+            if(latLng != null) {
+                obj.put("lat", latLng.latitude);
+                obj.put("lng", latLng.longitude);
+            }
             obj.put("good", good);
             obj.put("bad", bad);
+            if(uri != null)
+                obj.put("uri", uri.toString());
             return obj;
         } catch(JSONException e) {
             e.printStackTrace();
@@ -55,22 +59,26 @@ public class Image {
     }
 
     public static Image fromJSON(JSONObject obj) {
-        Image image = new Image();
+        return (new Image()).loadFromJSON(obj);
+    }
+
+    public Image loadFromJSON(JSONObject obj) {
         try {
-            image._id = obj.getString("_id");
-        } catch(JSONException e) {
-            image._id = null;
-        }
-        try {
-            image.name = obj.getString("name");
-            JSONObject ll = obj.getJSONObject("latLng");
-            image.latLng = new LatLng(ll.getDouble("latitude"), ll.getDouble("longitude"));
-            image.good = obj.getInt("good");
-            image.bad = obj.getInt("bad");
-            image.uri = Uri.parse(obj.getString("url"));
+            if(obj.has("_id"))
+                _id = obj.getString("_id");
+            if(obj.has("name"))
+                name = obj.getString("name");
+            if(obj.has("lat") && obj.has("lng"))
+                latLng = new LatLng(obj.getDouble("lat"), obj.getDouble("lng"));
+            if(obj.has("good"))
+                good = obj.getInt("good");
+            if(obj.has("bad"))
+                bad = obj.getInt("bad");
+            if(obj.has("uri"))
+                uri = Uri.parse(obj.getString("url"));
         } catch(JSONException e) {
             return null;
         }
-        return image;
+        return this;
     }
 }
