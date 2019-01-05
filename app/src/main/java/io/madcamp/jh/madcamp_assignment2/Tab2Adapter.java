@@ -33,11 +33,13 @@ public class Tab2Adapter extends RecyclerView.Adapter<Tab2Adapter.ImageViewHolde
 
         void setImage(Image image) {
             this.image = image;
-            Glide.with(imageView.getContext())
-                    .load(image.uri.toString())
-                    .thumbnail(0.1f)
-                    .into(imageView);
-            textView.setText(image.name);
+            if(image.uri != null) {
+                Glide.with(imageView.getContext())
+                        .load(image.uri.toString())
+                        .thumbnail(0.1f)
+                        .into(imageView);
+            }
+            textView.setText(image.tag);
         }
     }
 

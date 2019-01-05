@@ -153,8 +153,7 @@ public class Tab3Fragment extends Fragment {
         mapView.getMapAsync(new OnMapReadyCallback() {
             @Override
             public void onMapReady(GoogleMap googleMap) {
-                BitmapDescriptor desc = getMarkerIconFromDrawable(
-                        getResources().getDrawable(R.drawable.ic_animal_paw_print));
+
 
                 googleMap.clear();
 
@@ -163,9 +162,11 @@ public class Tab3Fragment extends Fragment {
                 for(Image img : imageList) {
                     if(img != null && img.latLng != null) {
                         if(first == null) first = img.latLng;
+                        BitmapDescriptor desc = getMarkerIconFromDrawable(
+                                getResources().getDrawable(R.drawable.ic_animal_paw_print));
                         MarkerOptions markerOptions = new MarkerOptions();
                         markerOptions.position(img.latLng)
-                                .title(img.name)
+                                .title(img.tag)
                                 .snippet("스니펫")
                                 .icon(desc)
                                 .alpha(0.6f);
@@ -181,12 +182,19 @@ public class Tab3Fragment extends Fragment {
     }
 
     private BitmapDescriptor getMarkerIconFromDrawable(Drawable drawable) {
+        int w = drawable.getIntrinsicWidth();
+        int h = drawable.getIntrinsicHeight();
+        int tw = w + w / 2;
+        int th = h + h / 2;
         Canvas canvas = new Canvas();
-        Bitmap bitmap = Bitmap.createBitmap(drawable.getIntrinsicWidth(), drawable.getIntrinsicHeight(), Bitmap.Config.ARGB_8888);
+        Bitmap bitmap = Bitmap.createBitmap(tw, th, Bitmap.Config.ARGB_8888);
 
         canvas.setBitmap(bitmap);
-        drawable.setBounds(0, 0, drawable.getIntrinsicWidth(), drawable.getIntrinsicWidth());
+
+        drawable.setBounds(0, 0, w, h);
         drawable.setColorFilter(0xff32117a, PorterDuff.Mode.SRC_IN);
+        canvas.translate(w / 4, h / 4);
+        canvas.rotate((float)Math.random() * 360.f, w / 2, h / 2);
         drawable.draw(canvas);
         return BitmapDescriptorFactory.fromBitmap(bitmap);
     }

@@ -8,16 +8,16 @@ import org.json.*;
 
 public class Image {
     public String _id;
-    public String name;
-    public String owner;
+    public String fb_id;
+    public String tag;
     public LatLng latLng;
     public int good, bad;
     public Uri uri;
 
     public Image() {
         _id = null;
-        name = null;
-        owner = null;
+        fb_id = null;
+        tag = null;
         latLng = null;
         good = 0;
         bad = 0;
@@ -32,16 +32,16 @@ public class Image {
             } else {
                 _id = null;
             }
-            if(name != null)
-                obj.put("name", name);
+            if(fb_id != null)
+                obj.put("name", fb_id);
             if(latLng != null) {
                 obj.put("lat", latLng.latitude);
                 obj.put("lng", latLng.longitude);
             }
-            obj.put("good", good);
-            obj.put("bad", bad);
-            if(uri != null)
-                obj.put("uri", uri.toString());
+//            obj.put("good", good);
+//            obj.put("bad", bad);
+//            if(uri != null)
+//                obj.put("uri", uri.toString());
             return obj;
         } catch(JSONException e) {
             e.printStackTrace();
@@ -66,8 +66,8 @@ public class Image {
         try {
             if(obj.has("_id"))
                 _id = obj.getString("_id");
-            if(obj.has("name"))
-                name = obj.getString("name");
+            if(obj.has("fb_id"))
+                fb_id = obj.getString("fb_id");
             if(obj.has("lat") && obj.has("lng"))
                 latLng = new LatLng(obj.getDouble("lat"), obj.getDouble("lng"));
             if(obj.has("good"))

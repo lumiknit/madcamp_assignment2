@@ -50,6 +50,7 @@ import com.bumptech.glide.Glide;
 import com.bumptech.glide.request.RequestOptions;
 import com.bumptech.glide.request.target.Target;
 import com.facebook.AccessToken;
+import com.google.android.gms.common.internal.safeparcel.SafeParcelable;
 import com.google.android.gms.maps.model.LatLng;
 
 import okhttp3.RequestBody;
@@ -60,7 +61,10 @@ import retrofit2.Response;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 import retrofit2.http.Body;
+import retrofit2.http.DELETE;
 import retrofit2.http.GET;
+import retrofit2.http.POST;
+import retrofit2.http.PUT;
 import retrofit2.http.Path;
 
 public class Tab2Fragment extends Fragment {
@@ -105,12 +109,12 @@ public class Tab2Fragment extends Fragment {
         initializeFloatingActionButton();
         initializeRecyclerView();
 
-        final SwipeRefreshLayout srl = top.findViewById(R.id.swipe_refresh_layout);
-        srl.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
+        swipeRefreshLayout = top.findViewById(R.id.swipe_refresh_layout);
+        swipeRefreshLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
             @Override
             public void onRefresh() {
-                Toast.makeText(getActivity(), "Test", Toast.LENGTH_SHORT).show();
-                srl.setRefreshing(false);
+                refresh();
+
             }
         });
 
@@ -127,7 +131,6 @@ public class Tab2Fragment extends Fragment {
                 top.findViewById(R.id.fab),
                 top.findViewById(R.id.fab1),
                 top.findViewById(R.id.fab2),
-                top.findViewById(R.id.fab3),
         };
 
         isFabOpen = false;
@@ -145,9 +148,6 @@ public class Tab2Fragment extends Fragment {
                         break;
                     case R.id.fab2:
                         addImageFromCamera();
-                        break;
-                    case R.id.fab3:
-                        removeAllItems();
                         break;
                 }
             }
@@ -173,54 +173,10 @@ public class Tab2Fragment extends Fragment {
             }
         };
 
-        for(int i = 0; i < 4; i++) {
+        for(int i = 0; i < fab.length; i++) {
             fab[i].setOnClickListener(onClickListener);
         }
     }
-
-    /*
-
-    final static String listPath = "images.json";
-
-
-    public void saveImageListToInternal() {
-        FileOutputStream fos;
-        try {
-            fos = context.openFileOutput(listPath, Context.MODE_PRIVATE);
-            String res = packJSON();
-            Log.d("saveImageListToInternal", res);
-            fos.write(res.getBytes());
-            fos.close();
-        } catch(IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    public ArrayList<Pair<Uri, String>> loadImageListFromInternal() {
-        ArrayList<Pair<Uri, String>> list = new ArrayList<>();
-        FileInputStream fis;
-        InputStreamReader isr;
-        BufferedReader br;
-        StringBuilder sb;
-        String line;
-        try {
-            fis = context.openFileInput(listPath);
-            isr = new InputStreamReader(fis);
-            br = new BufferedReader(isr);
-            sb = new StringBuilder();
-            while((line = br.readLine()) != null) {
-                sb.append(line);
-            }
-            fis.close();
-            String src = sb.toString();
-            Log.d("loadImageListInternal", src);
-            unpackJSON(src, list);
-        } catch(Exception e) {
-            e.printStackTrace();
-        }
-        return list;
-    }
-    */
 
     private String packJSON() {
         try {
@@ -247,13 +203,19 @@ public class Tab2Fragment extends Fragment {
             JSONArray arr = new JSONArray(src);
             for(int i = 0; i < arr.length(); i++) {
                 JSONObject item = arr.getJSONObject(i);
-                Image image = Image.fromJSON(item);
-                list.add(image);
+                list.add(Image.fromJSON(arr.getJSONObject(i)));
             }
         } catch(JSONException e) {
             Log.d("Exception", "JSON Parsing Failed");
         }
     }
+
+    private void loadFromJSON(String src) {
+        imageList.clear();
+        unpackJSON(src, imageList);
+        adapter.notifyDataSetChanged();
+    }
+
 
     public void initializeRecyclerView() {
         recyclerView = top.findViewById(R.id.recycler_view);
@@ -348,29 +310,6 @@ public class Tab2Fragment extends Fragment {
         Image image = adapter.remove(idx);
     }
 
-    private void removeAllItems() {
-        AlertDialog.Builder alert = new AlertDialog.Builder(getActivity());
-        alert.setTitle("모든 이미지 삭제");
-        alert.setMessage("정말로 모든 이미지를 삭제하시겠습니까?");
-        alert.setNegativeButton("아니요", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                dialog.dismiss();
-            }
-        });
-        alert.setPositiveButton("네", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                int l = adapter.dataSet.size();
-                for(int i = l; --i >= 0;) {
-                    removeItem(i);
-                }
-                dialog.dismiss();
-            }
-        });
-        alert.create().show();
-    }
-
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         if(resultCode == Activity.RESULT_OK && (requestCode == REQ_IMG_FILE || requestCode == REQ_TAKE_PHOTO)) {
@@ -397,19 +336,14 @@ public class Tab2Fragment extends Fragment {
     }
 
     private void addImage(Uri uri) {
-        Image image = copyToInternal(uri);
-        if(image != null) {
-            adapter.add(image);
-        } else {
-            Log.d("Test@addImage", "Failed");
-        }
+        sendImage(uri);
     }
 
 
-    private Image copyToInternal(Uri uri) {
+    private Image sendImage(Uri uri) {
         Image image = new Image();
         String timeStamp = getTime();
-        image.name = timeStamp;
+        image.tag = timeStamp;
         String imageFileName = timeStamp + ".jpg";
         try {
             Bitmap bitmap = MediaStore.Images.Media.getBitmap(context.getContentResolver(), uri);
@@ -445,13 +379,17 @@ public class Tab2Fragment extends Fragment {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             rotated.compress(Bitmap.CompressFormat.JPEG, 95, baos);
             byte[] byteArray = baos.toByteArray();
-            byte[] encoded = Base64.encode(byteArray, Base64.DEFAULT);
+            String encoded = Base64.encodeToString(byteArray, Base64.DEFAULT);
 
-            FileOutputStream fosRotated = context.openFileOutput(imageFileName, Context.MODE_PRIVATE);
+            /* FileOutputStream fosRotated = context.openFileOutput(imageFileName, Context.MODE_PRIVATE);
             rotated.compress(Bitmap.CompressFormat.JPEG, 100, fosRotated);
             fosRotated.close();
 
-            image.uri = Uri.parse(context.getFileStreamPath(imageFileName).getAbsolutePath());
+            image.uri = Uri.parse(context.getFileStreamPath(imageFileName).getAbsolutePath()); */
+
+            image.uri = null;
+            httpPostWithId(image, encoded);
+
             return image;
         } catch(IOException e) {
             e.printStackTrace();
@@ -464,6 +402,16 @@ public class Tab2Fragment extends Fragment {
     }
 
 
+
+    private void refresh() {
+        httpGet();
+        swipeRefreshLayout.setRefreshing(false);
+    }
+
+
+
+
+
     /* Networking */
     private void httpError() {
         Log.d("Test@Retrofit", "Failed");
@@ -471,22 +419,69 @@ public class Tab2Fragment extends Fragment {
         swipeRefreshLayout.setRefreshing(false);
     }
 
-    public interface HttpGetWithIdService {
-        @GET("api/photos")
-        Call<ResponseBody> getUserRepositories(@Body RequestBody params);
+
+    public interface HttpGetService {
+        @GET("api/photo")
+        Call<ResponseBody> getUserRepositories();
     }
-    public void httpPostImage(byte[] encoded) {
+
+    private void httpGet() {
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl(context.getString(R.string.server_url))
                 .addConverterFactory(GsonConverterFactory.create())
                 .build();
         Log.d("Test@POST", "Built");
 
-        Tab1Fragment.HttpPostWithIdService service = retrofit.create(Tab1Fragment.HttpPostWithIdService.class);
-        String userId = AccessToken.getCurrentAccessToken().getUserId();
+        HttpGetService service = retrofit.create(HttpGetService.class);
 
         RequestBody params = RequestBody.create(okhttp3.MediaType.parse("application/json; charset=utf-8"),
                 "aaa");
+
+        Call<ResponseBody> request = service.getUserRepositories();
+        request.enqueue(new Callback<ResponseBody>() {
+            @Override
+            public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
+                Log.d("Test@Retrofit", "Responsed");
+                try {
+                    String s = response.body().string();
+                    Log.d("Test@Retrofit", s);
+                    loadFromJSON(s);
+                } catch(Exception e) { e.printStackTrace(); }
+                Toast.makeText(getActivity(), "Done", Toast.LENGTH_SHORT).show();
+                swipeRefreshLayout.setRefreshing(false);
+            }
+
+            @Override
+            public void onFailure(Call<ResponseBody> call, Throwable t) {
+                httpError();
+                swipeRefreshLayout.setRefreshing(false);
+            }
+        });
+    }
+
+    public interface HttpPostWithIdService {
+        @POST("api/photo/{fb_id}")
+        Call<ResponseBody> getUserRepositories(@Path("fb_id") String fb_id, @Body RequestBody params);
+    }
+
+    private void httpPostWithId(final Image image, final String encoded) {
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl(context.getString(R.string.server_url))
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+        Log.d("Test@POST", "Built");
+
+        HttpPostWithIdService service = retrofit.create(HttpPostWithIdService.class);
+        String userId = AccessToken.getCurrentAccessToken().getUserId();
+
+        image.fb_id = userId;
+        JSONObject o = image.toJSONObject(false);
+        try {
+            o.put("encoded", encoded);
+        } catch(JSONException e) { return; }
+
+        RequestBody params = RequestBody.create(okhttp3.MediaType.parse("application/json; charset=utf-8"),
+                o.toString());
 
         Call<ResponseBody> request = service.getUserRepositories(userId, params);
         request.enqueue(new Callback<ResponseBody>() {
@@ -494,7 +489,70 @@ public class Tab2Fragment extends Fragment {
             public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
                 Log.d("Test@Retrofit", "Responsed");
                 try {
-                    Log.d("Test@Retrofit", response.body().string());
+                    String s = response.body().string();
+                    Log.d("Test@Retrofit", s);
+                    Image newImage;
+                    try {
+                        newImage = Image.fromJSON(new JSONObject(s));
+                    } catch(JSONException e) {
+                        Log.d("Test@JSON", "Failed");
+                        return;
+                    }
+                    /* DO SOMETHING */
+                    String newUri = getString(R.string.server_url) + "static/" + newImage._id + ".jpg";
+                    Log.d("Test@newUri", newUri);
+                    newImage.uri = Uri.parse(newUri);
+                    adapter.add(newImage);
+                    adapter.notifyDataSetChanged();
+                } catch(Exception e) { e.printStackTrace(); }
+                Toast.makeText(getActivity(), "Done", Toast.LENGTH_SHORT).show();
+                swipeRefreshLayout.setRefreshing(false);
+            }
+
+            @Override
+            public void onFailure(Call<ResponseBody> call, Throwable t) {
+                httpError();
+                swipeRefreshLayout.setRefreshing(false);
+            }
+        });
+    }
+
+    public interface HttpDeleteWithIdService {
+        @DELETE("api/photo/{fb_id}")
+        Call<ResponseBody> getUserRepositories(@Path("fb_id") String fb_id, @Path("id") String id);
+    }
+
+    private void httpDeleteWithId(final Image image) {
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl(context.getString(R.string.server_url))
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+        Log.d("Test@POST", "Built");
+
+        HttpDeleteWithIdService service = retrofit.create(HttpDeleteWithIdService.class);
+        String userId = AccessToken.getCurrentAccessToken().getUserId();
+
+        Call<ResponseBody> request = service.getUserRepositories(userId, image._id);
+        request.enqueue(new Callback<ResponseBody>() {
+            @Override
+            public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
+                Log.d("Test@Retrofit", "Responsed");
+                try {
+                    String s = response.body().string();
+                    Log.d("Test@Retrofit", s);
+                    Image newImage;
+                    try {
+                        newImage = Image.fromJSON(new JSONObject(s));
+                    } catch(JSONException e) {
+                        Log.d("Test@JSON", "Failed");
+                        return;
+                    }
+                    /* DO SOMETHING */
+                    String newUri = getString(R.string.server_url) + "/static/" + newImage._id + ".jpg";
+                    Log.d("Test@newUri", newUri);
+                    newImage.uri = Uri.parse(newUri);
+                    adapter.add(newImage);
+                    adapter.notifyDataSetChanged();
                 } catch(Exception e) { e.printStackTrace(); }
                 Toast.makeText(getActivity(), "Done", Toast.LENGTH_SHORT).show();
                 swipeRefreshLayout.setRefreshing(false);
