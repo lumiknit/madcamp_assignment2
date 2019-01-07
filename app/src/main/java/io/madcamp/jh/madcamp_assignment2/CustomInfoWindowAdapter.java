@@ -72,7 +72,8 @@ public class CustomInfoWindowAdapter implements GoogleMap.InfoWindowAdapter {
 
         nameTextView.setText(img.name == null ? "" : img.name);
         dateTextView.setText(img.getDateAsString());
-        likeTextView.setText(img.getLikeAsString());
+        likeTextView.setText(img.like > 0 ? img.getLikeAsString() : "");
+
 
         if(isFirst) {
             Glide.with(context).load(img.uri.toString())
