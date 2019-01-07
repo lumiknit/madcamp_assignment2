@@ -71,6 +71,7 @@ public class LoginHelper {
 
         HttpPostRegisteredService service = retrofit.create(HttpPostRegisteredService.class);
         String userId = AccessToken.getCurrentAccessToken().getUserId();
+        Log.d("Test@userId", userId);
 
         Call<ResponseBody> request = service.getUserRepositories(userId);
         request.enqueue(new Callback<ResponseBody>() {

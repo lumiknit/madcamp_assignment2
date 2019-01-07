@@ -49,6 +49,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
+import java.util.List;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.request.RequestOptions;
@@ -59,6 +60,13 @@ import com.facebook.ProfileManager;
 import com.google.android.gms.common.internal.safeparcel.SafeParcelable;
 import com.google.android.gms.maps.model.LatLng;
 
+import ai.fritz.core.Fritz;
+import ai.fritz.fritzvisionobjectmodel.FritzVisionObjectPredictor;
+import ai.fritz.fritzvisionobjectmodel.FritzVisionObjectPredictorOptions;
+import ai.fritz.fritzvisionobjectmodel.FritzVisionObjectResult;
+import ai.fritz.vision.FritzVisionLabel;
+import ai.fritz.vision.FritzVisionObject;
+import ai.fritz.vision.inputs.FritzVisionImage;
 import okhttp3.RequestBody;
 import okhttp3.ResponseBody;
 import retrofit2.Call;
@@ -386,6 +394,26 @@ public class Tab2Fragment extends Fragment {
         sendImage(uri);
     }
 
+    public FritzVisionObject isCat(Bitmap bitmap){
+        Fritz.configure(context, "8af448df27e943cc910be87c50f55090");
+        FritzVisionObjectPredictorOptions options = new FritzVisionObjectPredictorOptions.Builder()
+                .confidenceThreshold(0.1f)
+                .maxObjects(10).build();
+        FritzVisionObjectPredictor predictor = new FritzVisionObjectPredictor(options);
+        FritzVisionObjectResult result = predictor.predict(FritzVisionImage.fromBitmap(bitmap));
+        List<FritzVisionObject> objects = result.getVisionObjects();
+
+        for(FritzVisionObject i: objects){
+            String label = i.getVisionLabel().getText();
+            Log.d("Test@FritzVisionLabel", "Type: " + label+ " Con: "+i.getVisionLabel().getConfidence());
+            if(label.contains("cat")){
+                return i;
+            }
+            else continue;
+        }
+
+        return objects.get(0);
+    }
 
     private Image sendImage(Uri uri) {
         Image image = new Image();
@@ -428,18 +456,33 @@ public class Tab2Fragment extends Fragment {
             }
 
             Bitmap rotated = Bitmap.createBitmap(bitmap, 0, 0, width, height, matrix, false);
-
             Log.d("Test@ImgSize", "w: " + rotated.getWidth() + ", h: " + rotated.getHeight());
 
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            rotated.compress(Bitmap.CompressFormat.JPEG, 95, baos);
-            byte[] byteArray = baos.toByteArray();
-            String encoded = Base64.encodeToString(byteArray, Base64.DEFAULT);
+            FritzVisionObject iscat = isCat(bitmap);
+            if(!iscat.getVisionLabel().getText().equals("cat")){
+                AlertDialog.Builder builder = new AlertDialog.Builder(context);
+                builder.setTitle("ERROR: NO CAT")
+                        .setMessage("이 사진에는 고양이가 없는 것 같은데요.. \n*"+iscat.getVisionLabel().getConfidence()+"의 확률로 "+iscat.getVisionLabel().getText()+"..?")
+                        .setPositiveButton("알겠다옹", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                dialog.dismiss();
+                            }
+                        }).show();
+                return null;
+            }
+            else{
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                rotated.compress(Bitmap.CompressFormat.JPEG, 95, baos);
+                byte[] byteArray = baos.toByteArray();
+                String encoded = Base64.encodeToString(byteArray, Base64.DEFAULT);
 
-            image.uri = null;
-            httpPostWithId(image, encoded);
+                image.uri = null;
+                httpPostWithId(image, encoded);
 
-            return image;
+                return image;
+            }
+
         } catch(IOException e) {
             e.printStackTrace();
             return null;
