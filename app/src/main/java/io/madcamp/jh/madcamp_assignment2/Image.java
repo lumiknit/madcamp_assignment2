@@ -6,21 +6,27 @@ import com.google.android.gms.maps.model.LatLng;
 
 import org.json.*;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
 public class Image {
     public String _id;
     public String fb_id;
     public String tag;
+    public String name;
+    public long date;
     public LatLng latLng;
-    public int good, bad;
+    public int like;
     public Uri uri;
 
     public Image() {
         _id = null;
         fb_id = null;
+        name = null;
+        date = 0;
         tag = null;
         latLng = null;
-        good = 0;
-        bad = 0;
+        like = 0;
         uri = null;
     }
 
@@ -33,15 +39,15 @@ public class Image {
                 _id = null;
             }
             if(fb_id != null)
-                obj.put("name", fb_id);
+                obj.put("fb_id", fb_id);
+            if(name != null)
+                obj.put("name", name);
+            obj.put("date", date);
             if(latLng != null) {
                 obj.put("lat", latLng.latitude);
                 obj.put("lng", latLng.longitude);
             }
-//            obj.put("good", good);
-//            obj.put("bad", bad);
-//            if(uri != null)
-//                obj.put("uri", uri.toString());
+            obj.put("like", like);
             return obj;
         } catch(JSONException e) {
             e.printStackTrace();
@@ -68,17 +74,36 @@ public class Image {
                 _id = obj.getString("_id");
             if(obj.has("fb_id"))
                 fb_id = obj.getString("fb_id");
+            if(obj.has("name"))
+                name = obj.getString("name");
+            if(obj.has("date"))
+                date = obj.getLong("date");
             if(obj.has("lat") && obj.has("lng"))
                 latLng = new LatLng(obj.getDouble("lat"), obj.getDouble("lng"));
-            if(obj.has("good"))
-                good = obj.getInt("good");
-            if(obj.has("bad"))
-                bad = obj.getInt("bad");
+            if(obj.has("like"))
+                like = obj.getInt("like");
             if(obj.has("uri"))
                 uri = Uri.parse(obj.getString("url"));
         } catch(JSONException e) {
             return null;
         }
         return this;
+    }
+
+    public String getDateAsString() {
+        return new SimpleDateFormat("yy.MM.dd HH:mm:ss").format(new Date(date));
+    }
+
+    public String getLikeAsString() {
+        String s = "좋아요";
+        if(like > 0) s += "(" + like + ")";
+        return s;
+    }
+
+    public void updateTag() {
+        tag = getDateAsString();
+        if(name != null) {
+            tag = name + ", " + tag;
+        }
     }
 }

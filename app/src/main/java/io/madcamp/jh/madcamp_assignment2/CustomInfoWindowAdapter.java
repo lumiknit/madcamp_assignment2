@@ -63,14 +63,16 @@ public class CustomInfoWindowAdapter implements GoogleMap.InfoWindowAdapter {
             isFirst = true;
         }
 
-        Image img = ((Tag)marker.getTag()).image;
+        final Image img = ((Tag)marker.getTag()).image;
 
-        final TextView titleTextView = view.findViewById(R.id.text_view_title);
-        final TextView snippetTextView = view.findViewById(R.id.text_view_snippet);
+        final TextView nameTextView = view.findViewById(R.id.text_view_name);
+        final TextView dateTextView = view.findViewById(R.id.text_view_date);
+        final TextView likeTextView = view.findViewById(R.id.text_view_like);
         final ImageView imageView = view.findViewById(R.id.image_view);
 
-        snippetTextView.setText(marker.getSnippet());
-        titleTextView.setText(marker.getTitle());
+        nameTextView.setText(img.name == null ? "" : img.name);
+        dateTextView.setText(img.getDateAsString());
+        likeTextView.setText(img.getLikeAsString());
 
         if(isFirst) {
             Glide.with(context).load(img.uri.toString())

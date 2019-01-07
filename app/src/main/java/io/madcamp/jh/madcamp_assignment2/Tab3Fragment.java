@@ -153,8 +153,6 @@ public class Tab3Fragment extends Fragment {
         mapView.getMapAsync(new OnMapReadyCallback() {
             @Override
             public void onMapReady(GoogleMap googleMap) {
-
-
                 googleMap.clear();
 
                 LatLng first = null;
@@ -175,7 +173,7 @@ public class Tab3Fragment extends Fragment {
                 }
                 if(first != null) {
                     googleMap.moveCamera(CameraUpdateFactory.newLatLng(first));
-                    googleMap.animateCamera(CameraUpdateFactory.zoomTo(18));
+                    googleMap.animateCamera(CameraUpdateFactory.zoomTo(16));
                 }
             }
         });

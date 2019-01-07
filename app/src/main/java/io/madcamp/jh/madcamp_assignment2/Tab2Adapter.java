@@ -14,7 +14,9 @@ import com.bumptech.glide.Glide;
 import com.bumptech.glide.request.RequestOptions;
 import com.bumptech.glide.request.target.Target;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 
 
 public class Tab2Adapter extends RecyclerView.Adapter<Tab2Adapter.ImageViewHolder> {
@@ -39,6 +41,7 @@ public class Tab2Adapter extends RecyclerView.Adapter<Tab2Adapter.ImageViewHolde
                         .thumbnail(0.1f)
                         .into(imageView);
             }
+            image.updateTag();
             textView.setText(image.tag);
         }
     }
@@ -50,7 +53,7 @@ public class Tab2Adapter extends RecyclerView.Adapter<Tab2Adapter.ImageViewHolde
     }
 
     public void add(Image image) {
-        dataSet.add(image);
+        dataSet.add(0, image);
         notifyDataSetChanged();
     }
 

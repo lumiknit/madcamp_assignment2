@@ -16,12 +16,17 @@
         android:layout_height="match_parent">
 
         <TextView
-            android:id="@+id/text_view_title"
+            android:id="@+id/text_view_name"
             android:layout_width="match_parent"
             android:layout_height="wrap_content" />
 
         <TextView
-            android:id="@+id/text_view_snippet"
+            android:id="@+id/text_view_date"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
+        <TextView
+            android:id="@+id/text_view_like"
             android:layout_width="match_parent"
             android:layout_height="wrap_content" />
 

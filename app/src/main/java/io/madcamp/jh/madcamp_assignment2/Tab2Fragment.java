@@ -31,11 +31,13 @@ import android.view.ViewGroup;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.widget.ImageView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.w3c.dom.Text;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -44,12 +46,16 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.request.RequestOptions;
 import com.bumptech.glide.request.target.Target;
 import com.facebook.AccessToken;
+import com.facebook.Profile;
+import com.facebook.ProfileManager;
 import com.google.android.gms.common.internal.safeparcel.SafeParcelable;
 import com.google.android.gms.maps.model.LatLng;
 
@@ -114,9 +120,10 @@ public class Tab2Fragment extends Fragment {
             @Override
             public void onRefresh() {
                 refresh();
-
             }
         });
+
+        refresh();
 
         return top;
     }
@@ -203,7 +210,11 @@ public class Tab2Fragment extends Fragment {
             JSONArray arr = new JSONArray(src);
             for(int i = 0; i < arr.length(); i++) {
                 JSONObject item = arr.getJSONObject(i);
-                list.add(Image.fromJSON(arr.getJSONObject(i)));
+                Image image = Image.fromJSON(arr.getJSONObject(i));
+                String newUri = getString(R.string.server_url) + "static/" + image._id + ".jpg";
+                image.uri = Uri.parse(newUri);
+                image.updateTag();
+                list.add(image);
             }
         } catch(JSONException e) {
             Log.d("Exception", "JSON Parsing Failed");
@@ -213,6 +224,12 @@ public class Tab2Fragment extends Fragment {
     private void loadFromJSON(String src) {
         imageList.clear();
         unpackJSON(src, imageList);
+        Collections.sort(imageList, new Comparator<Image>() {
+            @Override
+            public int compare(Image o1, Image o2) {
+                return Long.valueOf(o2.date).compareTo(o1.date);
+            }
+        });
         adapter.notifyDataSetChanged();
     }
 
@@ -228,12 +245,12 @@ public class Tab2Fragment extends Fragment {
         recyclerView.addOnItemTouchListener(new RecyclerItemClickListener(
                 context, recyclerView, new RecyclerItemClickListener.OnItemClickListener() {
             @Override
-            public void onItemClick(View view, int position) {
+            public void onItemClick(View view, final int position) {
                 final Dialog dialog = new Dialog(getActivity(), android.R.style.Theme_Black_NoTitleBar);
                 dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.argb(100, 0, 0, 0)));
                 dialog.setContentView(R.layout.dialog_image);
 
-                Image image = adapter.get(position);
+                final Image image = adapter.get(position);
                 Glide.with(getActivity())
                         .load(image.uri.toString())
                         .thumbnail(0.1f)
@@ -248,6 +265,49 @@ public class Tab2Fragment extends Fragment {
                     }
                 });
 
+                final TextView deleteTextView = dialog.findViewById(R.id.text_view_delete);
+
+                if(imageList.get(position).fb_id.equals(AccessToken.getCurrentAccessToken().getUserId())) {
+                    deleteTextView.setOnClickListener(new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+                            builder.setMessage("정말로 이미지를 삭제하시겠습니까?")
+                                    .setPositiveButton("예", new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface d, int which) {
+                                    httpDeleteWithId(imageList.get(position));
+                                    d.dismiss();
+                                    dialog.dismiss();
+                                }
+                                    }).setNegativeButton("아니오", new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface d, int which) {
+                                    dialog.dismiss();
+                                    d.dismiss();
+                                }
+                            });
+                            builder.create().show();
+                        }
+                    });
+                } else {
+                    dialog.findViewById(R.id.text_view_delete).setVisibility(View.INVISIBLE);
+                }
+
+                final TextView likeTextView = dialog.findViewById(R.id.text_view_like);
+
+                likeTextView.setText(image.getLikeAsString());
+                likeTextView.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        httpPutWithId(imageList.get(position));
+                        likeTextView.setText(image.getLikeAsString());
+                    }
+                });
+
+                final TextView tagTextView = dialog.findViewById(R.id.text_view_tag);
+                tagTextView.setText(image.tag);
+
                 dialog.getWindow().getAttributes().windowAnimations = R.style.ImageDialogAnimation;
 
                 dialog.setCancelable(true);
@@ -256,24 +316,7 @@ public class Tab2Fragment extends Fragment {
 
             @Override
             public void onLongItemClick(View view, int position) {
-                final int idx = position;
-                AlertDialog.Builder builder = new AlertDialog.Builder(context);
-                builder.setTitle("Image " + idx);
-                builder.setItems(new CharSequence[]{"삭제"},
-                        new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialog, int which) {
-                                switch(which) {
-                                    case 0:
-                                        Toast.makeText(context, "Delete " + idx, Toast.LENGTH_SHORT).show();
-                                        removeItem(idx);
-
-                                        Log.d("Deleted", "" + idx);
-                                        break;
-                                }
-                            }
-                        });
-                builder.show();
+                /* DO NOTHING */
             }
         }));
     }
@@ -291,7 +334,7 @@ public class Tab2Fragment extends Fragment {
         if(intent.resolveActivity(context.getPackageManager()) != null) {
             File photoFile = null;
             try {
-                String imageFileName = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+                String imageFileName = getTime();
                 File storageDir = context.getExternalFilesDir(Environment.DIRECTORY_PICTURES);
                 photoFile = File.createTempFile(imageFileName, ".jpg", storageDir);
             } catch(IOException e) {
@@ -303,11 +346,6 @@ public class Tab2Fragment extends Fragment {
                 startActivityForResult(intent, REQ_TAKE_PHOTO);
             }
         }
-    }
-
-    private void removeItem(int idx) {
-        if(idx < 0 || idx >= adapter.dataSet.size()) return;
-        Image image = adapter.remove(idx);
     }
 
     @Override
@@ -342,9 +380,9 @@ public class Tab2Fragment extends Fragment {
 
     private Image sendImage(Uri uri) {
         Image image = new Image();
-        String timeStamp = getTime();
-        image.tag = timeStamp;
-        String imageFileName = timeStamp + ".jpg";
+        image.name = Profile.getCurrentProfile().getName();
+        image.date = (new Date()).getTime();
+        // String imageFileName = getTime() + ".jpg";
         try {
             Bitmap bitmap = MediaStore.Images.Media.getBitmap(context.getContentResolver(), uri);
             int width = bitmap.getWidth();
@@ -381,12 +419,6 @@ public class Tab2Fragment extends Fragment {
             byte[] byteArray = baos.toByteArray();
             String encoded = Base64.encodeToString(byteArray, Base64.DEFAULT);
 
-            /* FileOutputStream fosRotated = context.openFileOutput(imageFileName, Context.MODE_PRIVATE);
-            rotated.compress(Bitmap.CompressFormat.JPEG, 100, fosRotated);
-            fosRotated.close();
-
-            image.uri = Uri.parse(context.getFileStreamPath(imageFileName).getAbsolutePath()); */
-
             image.uri = null;
             httpPostWithId(image, encoded);
 
@@ -407,9 +439,6 @@ public class Tab2Fragment extends Fragment {
         httpGet();
         swipeRefreshLayout.setRefreshing(false);
     }
-
-
-
 
 
     /* Networking */
@@ -517,8 +546,47 @@ public class Tab2Fragment extends Fragment {
         });
     }
 
+    public interface HttpPutWithIdService {
+        @PUT("api/photo/{fb_id}/{id}")
+        Call<ResponseBody> getUserRepositories(@Path("fb_id") String fb_id, @Path("id") String id);
+    }
+
+    private void httpPutWithId(final Image image) {
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl(context.getString(R.string.server_url))
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+        Log.d("Test@PUT", "Built");
+
+        HttpPutWithIdService service = retrofit.create(HttpPutWithIdService.class);
+        String userId = AccessToken.getCurrentAccessToken().getUserId();
+
+        Call<ResponseBody> request = service.getUserRepositories(userId, image._id);
+        request.enqueue(new Callback<ResponseBody>() {
+            @Override
+            public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
+                Log.d("Test@Retrofit", "Responsed");
+                try {
+                    /* DO SOMETHING */
+                    String s = response.body().string();
+                    Log.d("Test@Retrofit", s);
+                    //image.loadFromJSON(new JSONObject(s));
+                    image.like += 1;
+                } catch(Exception e) { e.printStackTrace(); }
+                Toast.makeText(getActivity(), "Done", Toast.LENGTH_SHORT).show();
+                swipeRefreshLayout.setRefreshing(false);
+            }
+
+            @Override
+            public void onFailure(Call<ResponseBody> call, Throwable t) {
+                httpError();
+                swipeRefreshLayout.setRefreshing(false);
+            }
+        });
+    }
+
     public interface HttpDeleteWithIdService {
-        @DELETE("api/photo/{fb_id}")
+        @DELETE("api/photo/{fb_id}/{id}")
         Call<ResponseBody> getUserRepositories(@Path("fb_id") String fb_id, @Path("id") String id);
     }
 
@@ -527,7 +595,7 @@ public class Tab2Fragment extends Fragment {
                 .baseUrl(context.getString(R.string.server_url))
                 .addConverterFactory(GsonConverterFactory.create())
                 .build();
-        Log.d("Test@POST", "Built");
+        Log.d("Test@DELETE", "Built");
 
         HttpDeleteWithIdService service = retrofit.create(HttpDeleteWithIdService.class);
         String userId = AccessToken.getCurrentAccessToken().getUserId();
@@ -540,18 +608,8 @@ public class Tab2Fragment extends Fragment {
                 try {
                     String s = response.body().string();
                     Log.d("Test@Retrofit", s);
-                    Image newImage;
-                    try {
-                        newImage = Image.fromJSON(new JSONObject(s));
-                    } catch(JSONException e) {
-                        Log.d("Test@JSON", "Failed");
-                        return;
-                    }
                     /* DO SOMETHING */
-                    String newUri = getString(R.string.server_url) + "/static/" + newImage._id + ".jpg";
-                    Log.d("Test@newUri", newUri);
-                    newImage.uri = Uri.parse(newUri);
-                    adapter.add(newImage);
+                    adapter.remove(imageList.indexOf(image));
                     adapter.notifyDataSetChanged();
                 } catch(Exception e) { e.printStackTrace(); }
                 Toast.makeText(getActivity(), "Done", Toast.LENGTH_SHORT).show();

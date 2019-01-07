@@ -1,17 +1,13 @@
 package io.madcamp.jh.madcamp_assignment2;
 
-import android.app.FragmentManager;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
-import android.provider.ContactsContract;
 import android.support.annotation.Nullable;
 import android.support.design.widget.TabLayout;
-import android.support.v4.app.Fragment;
 import android.support.v4.view.ViewPager;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -24,10 +20,8 @@ import com.facebook.FacebookCallback;
 import com.facebook.FacebookException;
 import com.facebook.login.LoginManager;
 import com.facebook.login.LoginResult;
-import com.google.android.gms.maps.MapView;
 import com.google.gson.JsonArray;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 
 import retrofit2.Call;
@@ -37,9 +31,6 @@ import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 import retrofit2.http.GET;
 import retrofit2.http.Path;
-
-import static io.madcamp.jh.madcamp_assignment2.Tab1Fragment.REQUEST_CODE_ADD;
-import static io.madcamp.jh.madcamp_assignment2.Tab1Fragment.REQUEST_CODE_PICK;
 
 public class MainActivity extends AppCompatActivity {
     final int PERMISSION_REQ_CODE = 1;
