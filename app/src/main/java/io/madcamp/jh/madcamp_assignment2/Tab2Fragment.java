@@ -49,6 +49,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
+import java.util.List;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.request.RequestOptions;
@@ -59,6 +60,11 @@ import com.facebook.ProfileManager;
 import com.google.android.gms.common.internal.safeparcel.SafeParcelable;
 import com.google.android.gms.maps.model.LatLng;
 
+import ai.fritz.core.Fritz;
+import ai.fritz.vision.FritzVisionLabel;
+import ai.fritz.vision.inputs.FritzVisionImage;
+import ai.fritz.visionlabel.FritzVisionLabelPredictor;
+import ai.fritz.visionlabel.FritzVisionLabelResult;
 import okhttp3.RequestBody;
 import okhttp3.ResponseBody;
 import retrofit2.Call;
@@ -377,6 +383,21 @@ public class Tab2Fragment extends Fragment {
         sendImage(uri);
     }
 
+    public boolean isCat(Bitmap bitmap){
+        FritzVisionLabelPredictor predictor = new FritzVisionLabelPredictor();
+        FritzVisionLabelResult result = predictor.predict(FritzVisionImage.fromBitmap(bitmap));
+
+        List<FritzVisionLabel> lists = result.getVisionLabels();
+        for(FritzVisionLabel i: lists){
+            String label = i.getText();
+            if(label.equals("cat")){
+                return true;
+            }
+            else continue;
+        }
+
+        return false;
+    }
 
     private Image sendImage(Uri uri) {
         Image image = new Image();
@@ -414,6 +435,25 @@ public class Tab2Fragment extends Fragment {
 
             Bitmap rotated = Bitmap.createBitmap(bitmap, 0, 0, width, height, matrix, false);
 
+            if(!isCat(rotated)){
+                AlertDialog.Builder builder = new AlertDialog.Builder(context);
+                builder.setTitle("ERROR: NO CAT")
+                        .setMessage("이 사진에는 고양이가 없는 것 같은데요.. 다시 업로드 하시겠어요?")
+                        .setPositiveButton("알겠다옹", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                //
+                            }
+                        })
+                        .setNegativeButton("싫다옹", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                //
+                            }
+                        })
+                        //.setIcon() //NEED ICON
+                        .show();
+            }
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             rotated.compress(Bitmap.CompressFormat.JPEG, 95, baos);
             byte[] byteArray = baos.toByteArray();

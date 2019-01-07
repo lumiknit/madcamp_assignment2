@@ -14,4 +14,5 @@
 
     <string name="button_sync_label">연락처에서 불러오기</string>
     <string name="button_add_label">추가</string>
+    <string name="no_cat_error"></string>
 </resources>

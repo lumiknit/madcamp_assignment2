@@ -24,6 +24,7 @@ import com.google.gson.JsonArray;
 
 import java.util.Arrays;
 
+import ai.fritz.core.Fritz;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -46,6 +47,7 @@ public class MainActivity extends AppCompatActivity {
 
         callbackManager = CallbackManager.Factory.create();
         initializeFacebook();
+        initializeFritz();
     }
 
     private void initializeFacebook() {
@@ -89,6 +91,10 @@ public class MainActivity extends AppCompatActivity {
         } else {
             LoginHelper.httpPostRegistered(MainActivity.this);
         }
+    }
+
+    protected void initializeFritz(){
+        Fritz.configure(this, "8af448df27e943cc910be87c50f55090");
     }
 
     private void setupTabs() {
