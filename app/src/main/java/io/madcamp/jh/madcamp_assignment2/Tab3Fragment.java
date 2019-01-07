@@ -160,14 +160,15 @@ public class Tab3Fragment extends Fragment {
                 for(Image img : imageList) {
                     if(img != null && img.latLng != null) {
                         if(first == null) first = img.latLng;
+
+                        float like_p = Math.min(10, img.like) / 10.f;
+
                         BitmapDescriptor desc = getMarkerIconFromDrawable(
-                                getResources().getDrawable(R.drawable.ic_animal_paw_print));
+                                getResources().getDrawable(R.drawable.ic_animal_paw_print), like_p);
                         MarkerOptions markerOptions = new MarkerOptions();
                         markerOptions.position(img.latLng)
-                                .title(img.tag)
-                                .snippet("스니펫")
                                 .icon(desc)
-                                .alpha(0.6f);
+                                .alpha(0.5f + like_p * 0.3f);
                         googleMap.addMarker(markerOptions).setTag(new CustomInfoWindowAdapter.Tag(img));
                     }
                 }
@@ -179,9 +180,12 @@ public class Tab3Fragment extends Fragment {
         });
     }
 
-    private BitmapDescriptor getMarkerIconFromDrawable(Drawable drawable) {
-        int w = drawable.getIntrinsicWidth();
-        int h = drawable.getIntrinsicHeight();
+    private BitmapDescriptor getMarkerIconFromDrawable(Drawable drawable, float like_p) {
+        float s = 1 + like_p * 0.5f;
+        int ow = drawable.getIntrinsicWidth();
+        int oh = drawable.getIntrinsicHeight();
+        int w = (int)(ow * s);
+        int h = (int)(oh * s);
         int tw = w + w / 2;
         int th = h + h / 2;
         Canvas canvas = new Canvas();
@@ -189,10 +193,13 @@ public class Tab3Fragment extends Fragment {
 
         canvas.setBitmap(bitmap);
 
-        drawable.setBounds(0, 0, w, h);
-        drawable.setColorFilter(0xff32117a, PorterDuff.Mode.SRC_IN);
+        int color = Color.HSVToColor(new float[]{259.f, 0.76f - 0.5f * like_p, 0.5f - 0.2f * like_p});
+
+        drawable.setBounds(0, 0, ow, oh);
+        drawable.setColorFilter(color, PorterDuff.Mode.SRC_IN);
         canvas.translate(w / 4, h / 4);
         canvas.rotate((float)Math.random() * 360.f, w / 2, h / 2);
+        canvas.scale(s, s);
         drawable.draw(canvas);
         return BitmapDescriptorFactory.fromBitmap(bitmap);
     }
