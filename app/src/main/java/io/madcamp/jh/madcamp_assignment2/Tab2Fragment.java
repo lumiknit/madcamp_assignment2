@@ -61,10 +61,12 @@ import com.google.android.gms.common.internal.safeparcel.SafeParcelable;
 import com.google.android.gms.maps.model.LatLng;
 
 import ai.fritz.core.Fritz;
+import ai.fritz.fritzvisionobjectmodel.FritzVisionObjectPredictor;
+import ai.fritz.fritzvisionobjectmodel.FritzVisionObjectPredictorOptions;
+import ai.fritz.fritzvisionobjectmodel.FritzVisionObjectResult;
 import ai.fritz.vision.FritzVisionLabel;
+import ai.fritz.vision.FritzVisionObject;
 import ai.fritz.vision.inputs.FritzVisionImage;
-import ai.fritz.visionlabel.FritzVisionLabelPredictor;
-import ai.fritz.visionlabel.FritzVisionLabelResult;
 import okhttp3.RequestBody;
 import okhttp3.ResponseBody;
 import retrofit2.Call;
@@ -384,13 +386,17 @@ public class Tab2Fragment extends Fragment {
     }
 
     public boolean isCat(Bitmap bitmap){
-        FritzVisionLabelPredictor predictor = new FritzVisionLabelPredictor();
-        FritzVisionLabelResult result = predictor.predict(FritzVisionImage.fromBitmap(bitmap));
+        Fritz.configure(context, "8af448df27e943cc910be87c50f55090");
+        FritzVisionObjectPredictorOptions options = new FritzVisionObjectPredictorOptions.Builder()
+                .confidenceThreshold(0.1f)
+                .maxObjects(10).build();
+        FritzVisionObjectPredictor predictor = new FritzVisionObjectPredictor(options);
+        FritzVisionObjectResult result = predictor.predict(FritzVisionImage.fromBitmap(bitmap));
 
-        List<FritzVisionLabel> lists = result.getVisionLabels();
-        for(FritzVisionLabel i: lists){
-            String label = i.getText();
-            if(label.equals("cat")){
+        for(FritzVisionObject i: result.getVisionObjects()){
+            String label = i.getVisionLabel().getText();
+            Log.d("Test@FritzVisionLabel", "Type: " + label+ " Con: "+i.getVisionLabel().getConfidence());
+            if(label.contains("cat")){
                 return true;
             }
             else continue;
@@ -442,27 +448,23 @@ public class Tab2Fragment extends Fragment {
                         .setPositiveButton("알겠다옹", new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
-                                //
+                                dialog.dismiss();
                             }
-                        })
-                        .setNegativeButton("싫다옹", new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialog, int which) {
-                                //
-                            }
-                        })
-                        //.setIcon() //NEED ICON
-                        .show();
+                        }).show();
+                return null;
             }
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            rotated.compress(Bitmap.CompressFormat.JPEG, 95, baos);
-            byte[] byteArray = baos.toByteArray();
-            String encoded = Base64.encodeToString(byteArray, Base64.DEFAULT);
+            else{
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                rotated.compress(Bitmap.CompressFormat.JPEG, 95, baos);
+                byte[] byteArray = baos.toByteArray();
+                String encoded = Base64.encodeToString(byteArray, Base64.DEFAULT);
 
-            image.uri = null;
-            httpPostWithId(image, encoded);
+                image.uri = null;
+                httpPostWithId(image, encoded);
 
-            return image;
+                return image;
+            }
+
         } catch(IOException e) {
             e.printStackTrace();
             return null;

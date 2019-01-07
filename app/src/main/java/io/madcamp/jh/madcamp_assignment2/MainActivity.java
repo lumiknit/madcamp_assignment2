@@ -47,7 +47,7 @@ public class MainActivity extends AppCompatActivity {
 
         callbackManager = CallbackManager.Factory.create();
         initializeFacebook();
-        initializeFritz();
+        //initializeFritz();
     }
 
     private void initializeFacebook() {
@@ -93,9 +93,9 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    protected void initializeFritz(){
-        Fritz.configure(this, "8af448df27e943cc910be87c50f55090");
-    }
+//    protected void initializeFritz(){
+//        Fritz.configure(this, "8af448df27e943cc910be87c50f55090");
+//    }
 
     private void setupTabs() {
         /* 필요한 View를 불러옴 */

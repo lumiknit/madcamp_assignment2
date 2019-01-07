@@ -4,7 +4,7 @@ android {
     compileSdkVersion 28
     defaultConfig {
         applicationId "io.madcamp.jh.madcamp_assignment2"
-        minSdkVersion 15
+        minSdkVersion 21
         targetSdkVersion 28
         versionCode 1
         versionName "1.0"
@@ -45,5 +45,5 @@ dependencies {
     annotationProcessor 'com.github.bumptech.glide:compiler:4.8.0'
 
     implementation 'ai.fritz:core:2.0.0'
-    implementation 'ai.fritz:vision-label:2.0.0'
+    implementation 'ai.fritz:vision-object:2.0.0'
 }
