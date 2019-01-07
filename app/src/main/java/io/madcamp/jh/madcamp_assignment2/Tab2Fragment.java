@@ -97,6 +97,8 @@ public class Tab2Fragment extends Fragment {
     private ArrayList<Image> imageList;
     public Tab2Adapter adapter;
 
+    private Dialog dialog;
+
     private Uri tempPhotoUri;
 
     /* TabPagerAdapter에서 Fragment 생성할 때 사용하는 메소드 */
@@ -254,7 +256,7 @@ public class Tab2Fragment extends Fragment {
                 context, recyclerView, new RecyclerItemClickListener.OnItemClickListener() {
             @Override
             public void onItemClick(View view, final int position) {
-                final Dialog dialog = new Dialog(getActivity(), android.R.style.Theme_Black_NoTitleBar);
+                dialog = new Dialog(getActivity(), android.R.style.Theme_Black_NoTitleBar);
                 dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.argb(100, 0, 0, 0)));
                 dialog.setContentView(R.layout.dialog_image);
 
@@ -270,6 +272,7 @@ public class Tab2Fragment extends Fragment {
                     @Override
                     public void onClick(View v) {
                         dialog.dismiss();
+                        dialog = null;
                     }
                 });
 
@@ -287,11 +290,11 @@ public class Tab2Fragment extends Fragment {
                                     httpDeleteWithId(imageList.get(position));
                                     d.dismiss();
                                     dialog.dismiss();
+                                    dialog = null;
                                 }
                                     }).setNegativeButton("아니오", new DialogInterface.OnClickListener() {
                                 @Override
                                 public void onClick(DialogInterface d, int which) {
-                                    dialog.dismiss();
                                     d.dismiss();
                                 }
                             });
@@ -309,7 +312,6 @@ public class Tab2Fragment extends Fragment {
                     @Override
                     public void onClick(View v) {
                         httpPutWithId(imageList.get(position));
-                        likeTextView.setText(image.getLikeAsString());
                     }
                 });
 
@@ -319,6 +321,13 @@ public class Tab2Fragment extends Fragment {
                 dialog.getWindow().getAttributes().windowAnimations = R.style.ImageDialogAnimation;
 
                 dialog.setCancelable(true);
+                dialog.setOnCancelListener(new DialogInterface.OnCancelListener() {
+                    @Override
+                    public void onCancel(DialogInterface dialog) {
+                        dialog = null;
+                    }
+                });
+
                 dialog.show();
             }
 
@@ -440,7 +449,14 @@ public class Tab2Fragment extends Fragment {
                 }
             }
 
+            int ms = Math.max(width, height);
+            if(ms > 2560) {
+                float ratio = 2560.f / ms;
+                matrix.postScale(ratio, ratio);
+            }
+
             Bitmap rotated = Bitmap.createBitmap(bitmap, 0, 0, width, height, matrix, false);
+            Log.d("Test@ImgSize", "w: " + rotated.getWidth() + ", h: " + rotated.getHeight());
 
             FritzVisionObject iscat = isCat(bitmap);
             if(!iscat.getVisionLabel().getText().equals("cat")){
@@ -611,11 +627,11 @@ public class Tab2Fragment extends Fragment {
             public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
                 Log.d("Test@Retrofit", "Responsed");
                 try {
-                    /* DO SOMETHING */
-                    String s = response.body().string();
-                    Log.d("Test@Retrofit", s);
-                    //image.loadFromJSON(new JSONObject(s));
                     image.like += 1;
+                    if(dialog != null) {
+                        ((TextView)dialog.findViewById(R.id.text_view_like))
+                                .setText(image.getLikeAsString());
+                    }
                 } catch(Exception e) { e.printStackTrace(); }
                 Toast.makeText(getActivity(), "Done", Toast.LENGTH_SHORT).show();
                 swipeRefreshLayout.setRefreshing(false);
@@ -650,10 +666,10 @@ public class Tab2Fragment extends Fragment {
             public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
                 Log.d("Test@Retrofit", "Responsed");
                 try {
-                    String s = response.body().string();
-                    Log.d("Test@Retrofit", s);
                     /* DO SOMETHING */
-                    adapter.remove(imageList.indexOf(image));
+                    int index = imageList.indexOf(image);
+                    Log.d("Test@Idx", "" + index);
+                    adapter.remove(index);
                     adapter.notifyDataSetChanged();
                 } catch(Exception e) { e.printStackTrace(); }
                 Toast.makeText(getActivity(), "Done", Toast.LENGTH_SHORT).show();
