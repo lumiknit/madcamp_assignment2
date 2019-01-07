@@ -385,24 +385,25 @@ public class Tab2Fragment extends Fragment {
         sendImage(uri);
     }
 
-    public boolean isCat(Bitmap bitmap){
+    public FritzVisionObject isCat(Bitmap bitmap){
         Fritz.configure(context, "8af448df27e943cc910be87c50f55090");
         FritzVisionObjectPredictorOptions options = new FritzVisionObjectPredictorOptions.Builder()
                 .confidenceThreshold(0.1f)
                 .maxObjects(10).build();
         FritzVisionObjectPredictor predictor = new FritzVisionObjectPredictor(options);
         FritzVisionObjectResult result = predictor.predict(FritzVisionImage.fromBitmap(bitmap));
+        List<FritzVisionObject> objects = result.getVisionObjects();
 
-        for(FritzVisionObject i: result.getVisionObjects()){
+        for(FritzVisionObject i: objects){
             String label = i.getVisionLabel().getText();
             Log.d("Test@FritzVisionLabel", "Type: " + label+ " Con: "+i.getVisionLabel().getConfidence());
             if(label.contains("cat")){
-                return true;
+                return i;
             }
             else continue;
         }
 
-        return false;
+        return objects.get(0);
     }
 
     private Image sendImage(Uri uri) {
@@ -441,10 +442,11 @@ public class Tab2Fragment extends Fragment {
 
             Bitmap rotated = Bitmap.createBitmap(bitmap, 0, 0, width, height, matrix, false);
 
-            if(!isCat(rotated)){
+            FritzVisionObject iscat = isCat(bitmap);
+            if(!iscat.getVisionLabel().getText().equals("cat")){
                 AlertDialog.Builder builder = new AlertDialog.Builder(context);
                 builder.setTitle("ERROR: NO CAT")
-                        .setMessage("이 사진에는 고양이가 없는 것 같은데요.. 다시 업로드 하시겠어요?")
+                        .setMessage("이 사진에는 고양이가 없는 것 같은데요.. \n*"+iscat.getVisionLabel().getConfidence()+"의 확률로 "+iscat.getVisionLabel().getText()+"..?")
                         .setPositiveButton("알겠다옹", new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
