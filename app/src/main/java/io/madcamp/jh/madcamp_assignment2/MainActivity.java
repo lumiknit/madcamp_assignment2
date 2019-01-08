@@ -36,7 +36,6 @@ import retrofit2.http.Path;
 public class MainActivity extends AppCompatActivity {
     final int PERMISSION_REQ_CODE = 1;
 
-    private CallbackManager callbackManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -45,57 +44,9 @@ public class MainActivity extends AppCompatActivity {
         /* 탭 초기화 */
         setupTabs();
 
-        callbackManager = CallbackManager.Factory.create();
-        initializeFacebook();
+
         //initializeFritz();
     }
-
-    private void initializeFacebook() {
-        if(AccessToken.getCurrentAccessToken() == null) {
-            LoginManager.getInstance().registerCallback(callbackManager, new FacebookCallback<LoginResult>() {
-                @Override
-                public void onSuccess(LoginResult loginResult) {
-                    /* Done */
-                    Log.d("Test@FB", "onSucc");
-                    LoginHelper.removeDialog();
-                    LoginHelper.httpPostRegistered(MainActivity.this);
-                }
-
-                @Override
-                public void onCancel() {
-                    AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
-                    builder.setMessage("Facebook에 로그인을 하시지 않으시면 이 앱의 대부분의 기능을 이용할 수 없습니다.");
-                    builder.setPositiveButton("확인", new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) { dialog.dismiss(); }
-                    });
-                    builder.create().show();
-                    Log.d("Test@FB", "onCancel");
-                    LoginHelper.removeDialog();
-                }
-
-                @Override
-                public void onError(FacebookException error) {
-                    AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
-                    builder.setMessage("Facebook Error");
-                    builder.setPositiveButton("확인", new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) { dialog.dismiss(); }
-                    });
-                    builder.create().show();
-                    Log.d("Test@FB", "onErr");
-                    LoginHelper.removeDialog();
-                }
-            });
-            LoginManager.getInstance().logInWithReadPermissions(this, Arrays.asList("public_profile"));
-        } else {
-            LoginHelper.httpPostRegistered(MainActivity.this);
-        }
-    }
-
-//    protected void initializeFritz(){
-//        Fritz.configure(this, "8af448df27e943cc910be87c50f55090");
-//    }
 
     private void setupTabs() {
         /* 필요한 View를 불러옴 */
@@ -126,7 +77,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        callbackManager.onActivityResult(requestCode, resultCode, data);
     }
 
     @Override
