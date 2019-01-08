@@ -1,9 +1,7 @@
 package io.madcamp.jh.madcamp_assignment2;
 
-import android.net.Uri;
 import android.support.annotation.NonNull;
 import android.support.v7.widget.RecyclerView;
-import android.util.Pair;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -11,18 +9,18 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.bumptech.glide.Glide;
-import com.bumptech.glide.request.RequestOptions;
-import com.bumptech.glide.request.target.Target;
 
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
 
 
 public class Tab2Adapter extends RecyclerView.Adapter<Tab2Adapter.ImageViewHolder> {
+    protected static int STAMP_LIKE_THRESHOLD = 3;
+
+
     public static class ImageViewHolder extends RecyclerView.ViewHolder {
         private ImageView imageView;
         private TextView textView;
+        private ImageView stampImageView;
 
         private Image image;
 
@@ -30,7 +28,7 @@ public class Tab2Adapter extends RecyclerView.Adapter<Tab2Adapter.ImageViewHolde
             super(itemView);
             imageView = itemView.findViewById(R.id.image_view);
             textView = itemView.findViewById(R.id.text_view);
-
+            stampImageView = itemView.findViewById(R.id.image_view_stamp);
         }
 
         void setImage(Image image) {
@@ -43,6 +41,11 @@ public class Tab2Adapter extends RecyclerView.Adapter<Tab2Adapter.ImageViewHolde
             }
             image.updateTag();
             textView.setText(image.tag);
+            if(image.like >= STAMP_LIKE_THRESHOLD) {
+                stampImageView.setVisibility(View.VISIBLE);
+            } else {
+                stampImageView.setVisibility(View.INVISIBLE);
+            }
         }
     }
 

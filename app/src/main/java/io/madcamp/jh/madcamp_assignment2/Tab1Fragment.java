@@ -195,7 +195,7 @@ public class Tab1Fragment extends Fragment {
         fab[4] = top.findViewById(R.id.fab4);
 
         if (ContextCompat.checkSelfPermission(getActivity(),Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) {
-        } else{
+        } else {
             ActivityCompat.requestPermissions(getActivity(),new String[] {Manifest.permission.READ_CONTACTS},1);
         }
 

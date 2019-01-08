@@ -1,5 +1,6 @@
 package io.madcamp.jh.madcamp_assignment2;
 
+import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
@@ -7,6 +8,7 @@ import android.content.ClipData;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.Matrix;
@@ -16,6 +18,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
+import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
 import android.support.media.ExifInterface;
 import android.support.v4.app.Fragment;
@@ -88,10 +91,13 @@ public class Tab2Fragment extends Fragment {
     private View top;
     private TabPagerAdapter.SharedData shared;
 
+
+
     private boolean isFabOpen;
 
     private static final int REQ_IMG_FILE = 1;
     private static final int REQ_TAKE_PHOTO = 2;
+    private static final int REQ_PERMISSION = 3;
 
     private SwipeRefreshLayout swipeRefreshLayout;
     private RecyclerView recyclerView;
@@ -319,6 +325,14 @@ public class Tab2Fragment extends Fragment {
             dialog.findViewById(R.id.text_view_delete).setVisibility(View.INVISIBLE);
         }
 
+        final TextView downloadTextView = dialog.findViewById(R.id.text_view_download);
+        downloadTextView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                downloadImage(image);
+            }
+        });
+
         final TextView likeTextView = dialog.findViewById(R.id.text_view_like);
 
         likeTextView.setText(image.getLikeAsString());
@@ -383,6 +397,35 @@ public class Tab2Fragment extends Fragment {
         adapter.notifyDataSetChanged();
     }
 
+
+    private Image resImage;
+    public void downloadImage(Image image) {
+        if(Build.VERSION.SDK_INT >= 23) {
+            if (getActivity().checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                    != PackageManager.PERMISSION_GRANTED) {
+                resImage = image;
+                requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                        REQ_PERMISSION);
+            } else {
+                final Toast toast = Toast.makeText(context, "다운로드 시작했다냥", Toast.LENGTH_SHORT);
+                ImageDownload download = new ImageDownload("cat_" + image._id) {
+                    @Override
+                    protected void onPostExecute(String s) {
+                        if(s != null) {
+                            toast.setText("다운로드 끝났다냥");
+                            toast.show();
+                        } else {
+                            toast.setText("다운로드 실패했다냥");
+                            toast.show();
+                        }
+                    }
+                };
+                download.execute(image.uri.toString());
+                toast.show();
+            }
+        }
+    }
+
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         if(resultCode == Activity.RESULT_OK && (requestCode == REQ_IMG_FILE || requestCode == REQ_TAKE_PHOTO)) {
@@ -405,6 +448,17 @@ public class Tab2Fragment extends Fragment {
                     addImage(tempPhotoUri);
                     break;
             }
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        switch(requestCode) {
+            case REQ_PERMISSION:
+                for(int i : grantResults)
+                    if(i != PackageManager.PERMISSION_GRANTED) return;
+                downloadImage(resImage);
+                break;
         }
     }
 
