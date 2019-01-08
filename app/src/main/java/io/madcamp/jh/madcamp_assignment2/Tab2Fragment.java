@@ -400,29 +400,28 @@ public class Tab2Fragment extends Fragment {
 
     private Image resImage;
     public void downloadImage(Image image) {
-        if(Build.VERSION.SDK_INT >= 23) {
-            if (getActivity().checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                    != PackageManager.PERMISSION_GRANTED) {
-                resImage = image;
-                requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
-                        REQ_PERMISSION);
-            } else {
-                final Toast toast = Toast.makeText(context, "다운로드 시작했다냥", Toast.LENGTH_SHORT);
-                ImageDownload download = new ImageDownload("cat_" + image._id) {
-                    @Override
-                    protected void onPostExecute(String s) {
-                        if(s != null) {
-                            toast.setText("다운로드 끝났다냥");
-                            toast.show();
-                        } else {
-                            toast.setText("다운로드 실패했다냥");
-                            toast.show();
-                        }
+        if(Build.VERSION.SDK_INT < 23 ||
+                getActivity().checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                        != PackageManager.PERMISSION_GRANTED) {
+            resImage = image;
+            requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                    REQ_PERMISSION);
+        } else {
+            final Toast toast = Toast.makeText(context, "다운로드 시작했다냥", Toast.LENGTH_SHORT);
+            ImageDownload download = new ImageDownload("cat_" + image._id) {
+                @Override
+                protected void onPostExecute(String s) {
+                    if(s != null) {
+                        toast.setText("다운로드 끝났다냥");
+                        toast.show();
+                    } else {
+                        toast.setText("다운로드 실패했다냥");
+                        toast.show();
                     }
-                };
-                download.execute(image.uri.toString());
-                toast.show();
-            }
+                }
+            };
+            download.execute(image.uri.toString());
+            toast.show();
         }
     }
 
