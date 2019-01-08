@@ -96,7 +96,7 @@
                 android:textSize="16sp"
                 android:textStyle="bold"
                 android:textAlignment="textEnd"
-                android:textColor="#65d98a"
+                android:textColor="#2dd26e"
                 android:gravity="end"
                 android:clickable="true"
                 android:text="좋아요"/>
