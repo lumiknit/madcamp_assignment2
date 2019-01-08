@@ -86,6 +86,7 @@ public class Tab2Fragment extends Fragment {
     private int mPage;
     private Context context;
     private View top;
+    private TabPagerAdapter.SharedData shared;
 
     private boolean isFabOpen;
 
@@ -102,12 +103,13 @@ public class Tab2Fragment extends Fragment {
     private Uri tempPhotoUri;
 
     /* TabPagerAdapter에서 Fragment 생성할 때 사용하는 메소드 */
-    public static Tab2Fragment newInstance(int page, ArrayList<Image> imageList) {
+    public static Tab2Fragment newInstance(int page, TabPagerAdapter.SharedData shared) {
         Bundle args = new Bundle();
         args.putInt(ARG_PAGE, page);
         Tab2Fragment fragment = new Tab2Fragment();
         fragment.setArguments(args);
-        fragment.imageList = imageList;
+        fragment.shared = shared;
+        fragment.imageList = shared.imageList;
         return fragment;
     }
 
@@ -246,7 +248,6 @@ public class Tab2Fragment extends Fragment {
 
     public void initializeRecyclerView() {
         recyclerView = top.findViewById(R.id.recycler_view);
-        // adapter = new Tab2Adapter(loadImageListFromInternal());
         adapter = new Tab2Adapter(imageList);
         recyclerView.setHasFixedSize(true);
         recyclerView.setLayoutManager(new GridLayoutManager(context, 3));
@@ -256,79 +257,7 @@ public class Tab2Fragment extends Fragment {
                 context, recyclerView, new RecyclerItemClickListener.OnItemClickListener() {
             @Override
             public void onItemClick(View view, final int position) {
-                dialog = new Dialog(getActivity(), android.R.style.Theme_Black_NoTitleBar);
-                dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.argb(100, 0, 0, 0)));
-                dialog.setContentView(R.layout.dialog_image);
-
-                final Image image = adapter.get(position);
-                Glide.with(getActivity())
-                        .load(image.uri.toString())
-                        .thumbnail(0.1f)
-                        .apply(new RequestOptions().override(Target.SIZE_ORIGINAL))
-                        .into((ImageView)dialog.findViewById(R.id.image_view));
-                Log.d("Test@uri", image.uri.toString());
-
-                dialog.findViewById(R.id.blank).setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        dialog.dismiss();
-                        dialog = null;
-                    }
-                });
-
-                final TextView deleteTextView = dialog.findViewById(R.id.text_view_delete);
-
-                if(imageList.get(position).fb_id.equals(AccessToken.getCurrentAccessToken().getUserId())) {
-                    deleteTextView.setOnClickListener(new View.OnClickListener() {
-                        @Override
-                        public void onClick(View v) {
-                            AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
-                            builder.setMessage("정말로 이미지를 삭제하시겠습니까?")
-                                    .setPositiveButton("예", new DialogInterface.OnClickListener() {
-                                @Override
-                                public void onClick(DialogInterface d, int which) {
-                                    httpDeleteWithId(imageList.get(position));
-                                    d.dismiss();
-                                    dialog.dismiss();
-                                    dialog = null;
-                                }
-                                    }).setNegativeButton("아니오", new DialogInterface.OnClickListener() {
-                                @Override
-                                public void onClick(DialogInterface d, int which) {
-                                    d.dismiss();
-                                }
-                            });
-                            builder.create().show();
-                        }
-                    });
-                } else {
-                    dialog.findViewById(R.id.text_view_delete).setVisibility(View.INVISIBLE);
-                }
-
-                final TextView likeTextView = dialog.findViewById(R.id.text_view_like);
-
-                likeTextView.setText(image.getLikeAsString());
-                likeTextView.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        httpPutWithId(imageList.get(position));
-                    }
-                });
-
-                final TextView tagTextView = dialog.findViewById(R.id.text_view_tag);
-                tagTextView.setText(image.tag);
-
-                dialog.getWindow().getAttributes().windowAnimations = R.style.ImageDialogAnimation;
-
-                dialog.setCancelable(true);
-                dialog.setOnCancelListener(new DialogInterface.OnCancelListener() {
-                    @Override
-                    public void onCancel(DialogInterface dialog) {
-                        dialog = null;
-                    }
-                });
-
-                dialog.show();
+                openImageDialog(position);
             }
 
             @Override
@@ -336,6 +265,82 @@ public class Tab2Fragment extends Fragment {
                 /* DO NOTHING */
             }
         }));
+    }
+
+    public void openImageDialog(final int position) {
+        dialog = new Dialog(getActivity(), android.R.style.Theme_Black_NoTitleBar);
+        dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.argb(100, 0, 0, 0)));
+        dialog.setContentView(R.layout.dialog_image);
+
+        final Image image = adapter.get(position);
+        Glide.with(getActivity())
+                .load(image.uri.toString())
+                .thumbnail(0.1f)
+                .apply(new RequestOptions().override(Target.SIZE_ORIGINAL))
+                .into((ImageView)dialog.findViewById(R.id.image_view));
+        Log.d("Test@uri", image.uri.toString());
+
+        dialog.findViewById(R.id.blank).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                dialog.dismiss();
+                dialog = null;
+            }
+        });
+
+        final TextView deleteTextView = dialog.findViewById(R.id.text_view_delete);
+
+        if(imageList.get(position).fb_id.equals(AccessToken.getCurrentAccessToken().getUserId())) {
+            deleteTextView.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+                    builder.setMessage("정말로 이미지를 삭제하시겠습니까?")
+                            .setPositiveButton("예", new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface d, int which) {
+                                    httpDeleteWithId(imageList.get(position));
+                                    d.dismiss();
+                                    dialog.dismiss();
+                                    dialog = null;
+                                }
+                            }).setNegativeButton("아니오", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface d, int which) {
+                            d.dismiss();
+                        }
+                    });
+                    builder.create().show();
+                }
+            });
+        } else {
+            dialog.findViewById(R.id.text_view_delete).setVisibility(View.INVISIBLE);
+        }
+
+        final TextView likeTextView = dialog.findViewById(R.id.text_view_like);
+
+        likeTextView.setText(image.getLikeAsString());
+        likeTextView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                httpPutWithId(imageList.get(position));
+            }
+        });
+
+        final TextView tagTextView = dialog.findViewById(R.id.text_view_tag);
+        tagTextView.setText(image.tag);
+
+        dialog.getWindow().getAttributes().windowAnimations = R.style.ImageDialogAnimation;
+
+        dialog.setCancelable(true);
+        dialog.setOnCancelListener(new DialogInterface.OnCancelListener() {
+            @Override
+            public void onCancel(DialogInterface dialog) {
+                dialog = null;
+            }
+        });
+
+        dialog.show();
     }
 
     public void addImageFromFile() {
@@ -395,7 +400,6 @@ public class Tab2Fragment extends Fragment {
     }
 
     public FritzVisionObject isCat(Bitmap bitmap){
-        Fritz.configure(context, "8af448df27e943cc910be87c50f55090");
         FritzVisionObjectPredictorOptions options = new FritzVisionObjectPredictorOptions.Builder()
                 .confidenceThreshold(0.1f)
                 .maxObjects(10).build();
@@ -535,6 +539,10 @@ public class Tab2Fragment extends Fragment {
                     String s = response.body().string();
                     Log.d("Test@Retrofit", s);
                     loadFromJSON(s);
+                    if(shared.clickedInfoWindow >= 0) {
+                        openImageDialog(shared.clickedInfoWindow);
+                        shared.clickedInfoWindow = -1;
+                    }
                 } catch(Exception e) { e.printStackTrace(); }
                 Toast.makeText(context, "Done", Toast.LENGTH_SHORT).show();
                 swipeRefreshLayout.setRefreshing(false);

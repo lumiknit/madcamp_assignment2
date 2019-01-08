@@ -47,7 +47,7 @@ public class MainActivity extends AppCompatActivity {
 
         callbackManager = CallbackManager.Factory.create();
         initializeFacebook();
-        //initializeFritz();
+        initializeFritz();
     }
 
     private void initializeFacebook() {
@@ -93,9 +93,9 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-//    protected void initializeFritz(){
-//        Fritz.configure(this, "8af448df27e943cc910be87c50f55090");
-//    }
+    protected void initializeFritz(){
+        Fritz.configure(this, "8af448df27e943cc910be87c50f55090");
+    }
 
     private void setupTabs() {
         /* 필요한 View를 불러옴 */
@@ -110,11 +110,9 @@ public class MainActivity extends AppCompatActivity {
         /* Tab Change Detector */
         viewPager.addOnPageChangeListener(new ViewPager.OnPageChangeListener() {
             @Override
-            public void onPageScrolled(int i, float v, int i1) {
-            }
+            public void onPageScrolled(int i, float v, int i1) { }
             @Override
-            public void onPageSelected(int i) {
-            }
+            public void onPageSelected(int i) { }
             @Override
             public void onPageScrollStateChanged(int i) {
                 if(i == 0) {

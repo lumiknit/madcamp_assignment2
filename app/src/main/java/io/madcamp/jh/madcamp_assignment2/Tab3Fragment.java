@@ -40,18 +40,20 @@ public class Tab3Fragment extends Fragment {
     private int mPage;
     private Context context;
     private View top;
+    private TabPagerAdapter.SharedData shared;
 
     private MapView mapView;
     private GoogleMap map;
 
     public ArrayList<Image> imageList = null;
 
-    public static Tab3Fragment newInstance(int page, ArrayList<Image> imageList) {
+    public static Tab3Fragment newInstance(int page, TabPagerAdapter.SharedData shared) {
         Bundle args = new Bundle();
         args.putInt(ARG_PAGE, page);
         Tab3Fragment fragment = new Tab3Fragment();
         fragment.setArguments(args);
-        fragment.imageList = imageList;
+        fragment.shared = shared;
+        fragment.imageList = shared.imageList;
         return fragment;
     }
 
@@ -79,6 +81,9 @@ public class Tab3Fragment extends Fragment {
                 Tab3Fragment.this.map = googleMap;
                 Log.d("Test@GoogleMap", "" + (googleMap == null));
 
+                googleMap.moveCamera(CameraUpdateFactory.newLatLng(new LatLng(36.370901, 127.362565)));
+                googleMap.animateCamera(CameraUpdateFactory.zoomTo(15));
+
                 updateMarkers();
 
                 googleMap.setInfoWindowAdapter(new CustomInfoWindowAdapter(getActivity()));
@@ -88,7 +93,7 @@ public class Tab3Fragment extends Fragment {
                     public void onInfoWindowClick(Marker marker) {
                         TabLayout tabLayout = (TabLayout)getActivity().findViewById(R.id.sliding_tabs);
                         tabLayout.getTabAt(1).select();
-                        Toast.makeText(getActivity(), "" + marker.getTag(), Toast.LENGTH_SHORT).show();
+                        shared.clickedInfoWindow = imageList.indexOf(marker.getTag());
                     }
                 });
             }
@@ -150,17 +155,28 @@ public class Tab3Fragment extends Fragment {
         }
 
         final ArrayList<Image> list = imageList;
+        shared.clickedInfoWindow = -1;
 
         mapView.getMapAsync(new OnMapReadyCallback() {
             @Override
             public void onMapReady(GoogleMap googleMap) {
                 googleMap.clear();
 
-                LatLng first = null;
+                int n = 0;
+                LatLng center = null;
 
                 for(Image img : imageList) {
                     if(img != null && img.latLng != null) {
-                        if(first == null) first = img.latLng;
+                        final LatLng ll = img.latLng;
+                        if(center == null) {
+                            center = new LatLng(ll.latitude, ll.longitude);
+                            n = 1;
+                        } else if(approxDistSq(center, ll) < 0.0002) {
+                            center = new LatLng(
+                                    center.latitude + ll.latitude,
+                                    center.longitude + ll.longitude);
+                            n += 1;
+                        }
 
                         float like_p = Math.min(10, img.like) / 10.f;
 
@@ -173,9 +189,9 @@ public class Tab3Fragment extends Fragment {
                         googleMap.addMarker(markerOptions).setTag(new CustomInfoWindowAdapter.Tag(img));
                     }
                 }
-                if(first != null) {
-                    googleMap.moveCamera(CameraUpdateFactory.newLatLng(first));
-                    googleMap.animateCamera(CameraUpdateFactory.zoomTo(16));
+                if(center != null) {
+                    googleMap.moveCamera(CameraUpdateFactory.newLatLng(new LatLng(center.latitude / n, center.longitude / n)));
+                    googleMap.animateCamera(CameraUpdateFactory.zoomTo(15));
                 }
             }
         });
@@ -203,5 +219,13 @@ public class Tab3Fragment extends Fragment {
         canvas.scale(s, s);
         drawable.draw(canvas);
         return BitmapDescriptorFactory.fromBitmap(bitmap);
+    }
+
+    private double approxDistSq(LatLng a, LatLng b) {
+        double lat = a.latitude - b.latitude;
+        double lng = a.longitude - b.longitude;
+        while(lng >= 360.0) lng -= 360.0;
+        while(lng < 0.0) lng += 360.0;
+        return lat * lat + lng * lng;
     }
 }
