@@ -669,6 +669,8 @@ public class Tab2Fragment extends Fragment {
                     newImage.uri = Uri.parse(newUri);
                     adapter.add(newImage);
                     adapter.notifyDataSetChanged();
+
+                    Toast.makeText(context, "업로드 되었다냥", Toast.LENGTH_SHORT).show();
                 } catch(Exception e) { e.printStackTrace(); }
                 // Toast.makeText(context, "Done", Toast.LENGTH_SHORT).show();
                 swipeRefreshLayout.setRefreshing(false);

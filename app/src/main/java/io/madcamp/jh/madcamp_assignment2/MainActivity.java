@@ -14,6 +14,8 @@ import android.view.MenuItem;
 
 import com.facebook.login.LoginManager;
 
+import ai.fritz.core.Fritz;
+
 
 public class MainActivity extends AppCompatActivity {
     @Override
@@ -22,6 +24,8 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         /* 탭 초기화 */
         setupTabs();
+
+        Fritz.configure(this, "8af448df27e943cc910be87c50f55090");
     }
   
     private void setupTabs() {
