@@ -40,18 +40,20 @@ public class Tab3Fragment extends Fragment {
     private int mPage;
     private Context context;
     private View top;
+    private TabPagerAdapter.SharedData shared;
 
     private MapView mapView;
     private GoogleMap map;
 
     public ArrayList<Image> imageList = null;
 
-    public static Tab3Fragment newInstance(int page, ArrayList<Image> imageList) {
+    public static Tab3Fragment newInstance(int page, TabPagerAdapter.SharedData shared) {
         Bundle args = new Bundle();
         args.putInt(ARG_PAGE, page);
         Tab3Fragment fragment = new Tab3Fragment();
         fragment.setArguments(args);
-        fragment.imageList = imageList;
+        fragment.shared = shared;
+        fragment.imageList = shared.imageList;
         return fragment;
     }
 
@@ -79,6 +81,9 @@ public class Tab3Fragment extends Fragment {
                 Tab3Fragment.this.map = googleMap;
                 Log.d("Test@GoogleMap", "" + (googleMap == null));
 
+                googleMap.moveCamera(CameraUpdateFactory.newLatLng(new LatLng(36.370901, 127.362565)));
+                googleMap.animateCamera(CameraUpdateFactory.zoomTo(15));
+
                 updateMarkers();
 
                 googleMap.setInfoWindowAdapter(new CustomInfoWindowAdapter(getActivity()));
@@ -88,7 +93,7 @@ public class Tab3Fragment extends Fragment {
                     public void onInfoWindowClick(Marker marker) {
                         TabLayout tabLayout = (TabLayout)getActivity().findViewById(R.id.sliding_tabs);
                         tabLayout.getTabAt(1).select();
-                        Toast.makeText(getActivity(), "" + marker.getTag(), Toast.LENGTH_SHORT).show();
+                        shared.clickedInfoWindow = imageList.indexOf(((CustomInfoWindowAdapter.Tag)marker.getTag()).image);
                     }
                 });
             }
@@ -138,6 +143,7 @@ public class Tab3Fragment extends Fragment {
 
 
     public void updateMarkers() {
+        Log.d("Test@updateMarkers", "called");
         if(mapView == null) {
             mapView = getView().findViewById(R.id.map);
             //Log.d("Test@updateMarkers", "MapView was not loaded");
@@ -149,39 +155,51 @@ public class Tab3Fragment extends Fragment {
         }
 
         final ArrayList<Image> list = imageList;
+        shared.clickedInfoWindow = -1;
 
         mapView.getMapAsync(new OnMapReadyCallback() {
             @Override
             public void onMapReady(GoogleMap googleMap) {
                 googleMap.clear();
 
-                LatLng first = null;
+                int n = 0;
+                double lat = 0.0;
+                double lng = 0.0;
 
                 for(Image img : imageList) {
                     if(img != null && img.latLng != null) {
-                        if(first == null) first = img.latLng;
+                        final LatLng ll = img.latLng;
+                        if(n == 0 || approxDistSq(new LatLng(lat, lng), ll) < 0.0002) {
+                            lat += ll.latitude;
+                            lng += ll.longitude;
+                            n += 1;
+                        }
+
+                        float like_p = Math.min(10, img.like) / 10.f;
+
                         BitmapDescriptor desc = getMarkerIconFromDrawable(
-                                getResources().getDrawable(R.drawable.ic_animal_paw_print));
+                                getResources().getDrawable(R.drawable.ic_animal_paw_print), like_p);
                         MarkerOptions markerOptions = new MarkerOptions();
                         markerOptions.position(img.latLng)
-                                .title(img.tag)
-                                .snippet("스니펫")
                                 .icon(desc)
-                                .alpha(0.6f);
+                                .alpha(0.5f + like_p * 0.3f);
                         googleMap.addMarker(markerOptions).setTag(new CustomInfoWindowAdapter.Tag(img));
                     }
                 }
-                if(first != null) {
-                    googleMap.moveCamera(CameraUpdateFactory.newLatLng(first));
-                    googleMap.animateCamera(CameraUpdateFactory.zoomTo(16));
+                if(n > 0) {
+                    googleMap.moveCamera(CameraUpdateFactory.newLatLng(new LatLng(lat / n, lng / n)));
+                    googleMap.animateCamera(CameraUpdateFactory.zoomTo(15));
                 }
             }
         });
     }
 
-    private BitmapDescriptor getMarkerIconFromDrawable(Drawable drawable) {
-        int w = drawable.getIntrinsicWidth();
-        int h = drawable.getIntrinsicHeight();
+    private BitmapDescriptor getMarkerIconFromDrawable(Drawable drawable, float like_p) {
+        float s = 1 + like_p * 0.5f;
+        int ow = drawable.getIntrinsicWidth();
+        int oh = drawable.getIntrinsicHeight();
+        int w = (int)(ow * s);
+        int h = (int)(oh * s);
         int tw = w + w / 2;
         int th = h + h / 2;
         Canvas canvas = new Canvas();
@@ -189,11 +207,22 @@ public class Tab3Fragment extends Fragment {
 
         canvas.setBitmap(bitmap);
 
-        drawable.setBounds(0, 0, w, h);
-        drawable.setColorFilter(0xff32117a, PorterDuff.Mode.SRC_IN);
+        int color = Color.HSVToColor(new float[]{259.f, 0.76f - 0.5f * like_p, 0.5f - 0.2f * like_p});
+
+        drawable.setBounds(0, 0, ow, oh);
+        drawable.setColorFilter(color, PorterDuff.Mode.SRC_IN);
         canvas.translate(w / 4, h / 4);
         canvas.rotate((float)Math.random() * 360.f, w / 2, h / 2);
+        canvas.scale(s, s);
         drawable.draw(canvas);
         return BitmapDescriptorFactory.fromBitmap(bitmap);
+    }
+
+    private double approxDistSq(LatLng a, LatLng b) {
+        double lat = a.latitude - b.latitude;
+        double lng = a.longitude - b.longitude;
+        while(lng >= 360.0) lng -= 360.0;
+        while(lng < 0.0) lng += 360.0;
+        return lat * lat + lng * lng;
     }
 }

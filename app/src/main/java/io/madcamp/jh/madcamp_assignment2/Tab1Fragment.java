@@ -163,7 +163,7 @@ public class Tab1Fragment extends Fragment {
             public void onRefresh() {
                 AccessToken token = AccessToken.getCurrentAccessToken();
                 if(LoginHelper.checkRegistered(context)) {
-                    Toast.makeText(getActivity(), "Test", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(context, "Test", Toast.LENGTH_SHORT).show();
                     refresh();
                 } else {
                     swipeRefreshLayout.setRefreshing(false);
@@ -195,7 +195,7 @@ public class Tab1Fragment extends Fragment {
         fab[4] = top.findViewById(R.id.fab4);
 
         if (ContextCompat.checkSelfPermission(getActivity(),Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) {
-        } else{
+        } else {
             ActivityCompat.requestPermissions(getActivity(),new String[] {Manifest.permission.READ_CONTACTS},1);
         }
 
@@ -407,7 +407,7 @@ public class Tab1Fragment extends Fragment {
 
     /* Contact List Methods */
     private void addContact(Contact contact) {
-        httpPutWithId(contact, false);
+        if(!httpPutWithId(contact, false)) return;
         int i;
         for(i = contacts.size() - 1; i >= 0; i--) {
             if(contact.name.equals(contacts.get(i).name)) {
@@ -424,13 +424,13 @@ public class Tab1Fragment extends Fragment {
     }
 
     private void modifyContact(int index, Contact contact) {
-        httpPutWithId(contact, true);
+        if(!httpPutWithId(contact, true)) return;
         contacts.set(index, contact);
         updateContacts();
     }
 
     private void removeContact(Contact contact) {
-        httpDeleteWithId(contact.name);
+        if(!httpDeleteWithId(contact.name)) return;
         contacts.remove(contact);
         updateContacts();
     }
@@ -501,14 +501,19 @@ public class Tab1Fragment extends Fragment {
         httpGetWithId();
     }
 
-    private void refresh() {
+    public void refresh() {
+        if(AccessToken.getCurrentAccessToken() == null) {
+            swipeRefreshLayout.setRefreshing(false);
+            return;
+        }
+        swipeRefreshLayout.setRefreshing(true);
         httpGetWithId();
     }
 
 
     private void httpError() {
         Log.d("Test@Retrofit", "Failed");
-        Toast.makeText(getActivity(), "Failed to load", Toast.LENGTH_SHORT).show();
+        Toast.makeText(context, "Failed to load", Toast.LENGTH_SHORT).show();
         swipeRefreshLayout.setRefreshing(false);
     }
 
@@ -518,8 +523,8 @@ public class Tab1Fragment extends Fragment {
         Call<ResponseBody> getUserRepositories(@Path("id") String _id);
     }
 
-    private void httpGetWithId() {
-        if(!LoginHelper.checkRegistered(getActivity())) return;
+    private boolean httpGetWithId() {
+        if(!LoginHelper.checkRegistered(getActivity())) return false;
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl(context.getString(R.string.server_url))
                 .addConverterFactory(GsonConverterFactory.create())
@@ -527,7 +532,9 @@ public class Tab1Fragment extends Fragment {
         Log.d("Test@GET", "Built");
 
         HttpGetWithIdService service = retrofit.create(HttpGetWithIdService.class);
+
         String userId = AccessToken.getCurrentAccessToken().getUserId();
+
         Call<ResponseBody> request = service.getUserRepositories(userId);
         request.enqueue(new Callback<ResponseBody>() {
             @Override
@@ -545,7 +552,7 @@ public class Tab1Fragment extends Fragment {
                     updateContacts();
                     Log.d("Test@RetrofitResult", "Updated");
                 } catch(Exception e) { e.printStackTrace(); }
-                Toast.makeText(getActivity(), "Done", Toast.LENGTH_SHORT).show();
+                // Toast.makeText(context, "Done", Toast.LENGTH_SHORT).show();
                 swipeRefreshLayout.setRefreshing(false);
             }
 
@@ -555,6 +562,7 @@ public class Tab1Fragment extends Fragment {
                 swipeRefreshLayout.setRefreshing(false);
             }
         });
+        return true;
     }
 
     public interface HttpPostWithIdService {
@@ -570,6 +578,8 @@ public class Tab1Fragment extends Fragment {
         Log.d("Test@POST", "Built");
 
         HttpPostWithIdService service = retrofit.create(HttpPostWithIdService.class);
+
+        if(!LoginHelper.checkRegistered(context)) return;
         String userId = AccessToken.getCurrentAccessToken().getUserId();
 
         RequestBody params = RequestBody.create(okhttp3.MediaType.parse("application/json; charset=utf-8"),
@@ -583,7 +593,7 @@ public class Tab1Fragment extends Fragment {
                 try {
                     Log.d("Test@Retrofit", response.body().string());
                 } catch(Exception e) { e.printStackTrace(); }
-                Toast.makeText(getActivity(), "Done", Toast.LENGTH_SHORT).show();
+                // Toast.makeText(context, "Done", Toast.LENGTH_SHORT).show();
                 swipeRefreshLayout.setRefreshing(false);
             }
 
@@ -600,7 +610,8 @@ public class Tab1Fragment extends Fragment {
         Call<ResponseBody> getUserRepositories(@Path("id") String _id, @Body RequestBody params);
     }
 
-    private void httpPutWithId(final Contact contact, boolean includeId) {
+    private boolean httpPutWithId(final Contact contact, boolean includeId) {
+        if(!LoginHelper.checkRegistered(context)) return false;
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl(context.getString(R.string.server_url))
                 .addConverterFactory(GsonConverterFactory.create())
@@ -628,7 +639,7 @@ public class Tab1Fragment extends Fragment {
                     Log.d("Test@Retrofit", body);
                     contact.loadFromJSON(new JSONObject(body));
                 } catch(Exception e) { e.printStackTrace(); }
-                Toast.makeText(getActivity(), "Done", Toast.LENGTH_SHORT).show();
+                // Toast.makeText(context, "Done", Toast.LENGTH_SHORT).show();
                 swipeRefreshLayout.setRefreshing(false);
             }
 
@@ -638,6 +649,7 @@ public class Tab1Fragment extends Fragment {
                 swipeRefreshLayout.setRefreshing(false);
             }
         });
+        return true;
     }
 
     public interface HttpDeleteWithIdService {
@@ -645,7 +657,8 @@ public class Tab1Fragment extends Fragment {
         Call<ResponseBody> getUserRepositories(@Path("id") String _id, @Path("name") String name);
     }
 
-    private void httpDeleteWithId(final String name) {
+    private boolean httpDeleteWithId(final String name) {
+        if(!LoginHelper.checkRegistered(context)) return false;
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl(context.getString(R.string.server_url))
                 .addConverterFactory(GsonConverterFactory.create())
@@ -653,6 +666,7 @@ public class Tab1Fragment extends Fragment {
         Log.d("Test@DELETE", "Built");
 
         HttpDeleteWithIdService service = retrofit.create(HttpDeleteWithIdService.class);
+
         String userId = AccessToken.getCurrentAccessToken().getUserId();
         Call<ResponseBody> request = service.getUserRepositories(userId, name);
         request.enqueue(new Callback<ResponseBody>() {
@@ -671,7 +685,7 @@ public class Tab1Fragment extends Fragment {
                         updateContacts();
                     }
                 } catch(Exception e) { e.printStackTrace(); }
-                Toast.makeText(getActivity(), "Done", Toast.LENGTH_SHORT).show();
+                // Toast.makeText(context, "Done", Toast.LENGTH_SHORT).show();
                 swipeRefreshLayout.setRefreshing(false);
             }
 
@@ -681,5 +695,6 @@ public class Tab1Fragment extends Fragment {
                 swipeRefreshLayout.setRefreshing(false);
             }
         });
+        return true;
     }
 }

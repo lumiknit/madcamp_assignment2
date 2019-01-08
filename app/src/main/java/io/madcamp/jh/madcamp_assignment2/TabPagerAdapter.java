@@ -5,19 +5,31 @@ import android.content.res.Resources;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentStatePagerAdapter;
+import android.util.Log;
 
 import java.util.ArrayList;
 
 public class TabPagerAdapter extends FragmentStatePagerAdapter {
     final int PAGE_COUNT = 3;
     private Context context;
+    private Fragment[] fragments;
 
-    private ArrayList<Image> imageList;
+    public class SharedData {
+        public ArrayList<Image> imageList;
+        public int clickedInfoWindow;
+    }
+
+    public SharedData shared;
 
     public TabPagerAdapter(FragmentManager fm, Context context) {
         super(fm);
         this.context = context;
-        imageList = new ArrayList<>();
+
+        shared = new SharedData();
+        shared.imageList = new ArrayList<>();
+        shared.clickedInfoWindow = -1;
+
+        fragments = new Fragment[3];
     }
 
     @Override
@@ -27,12 +39,21 @@ public class TabPagerAdapter extends FragmentStatePagerAdapter {
 
     @Override
     public Fragment getItem(int position) {
-        switch(position) {
-            case 0: return Tab1Fragment.newInstance(0);
-            case 1: return Tab2Fragment.newInstance(1, imageList);
-            case 2: return Tab3Fragment.newInstance(2, imageList);
-            default: return null;
+        Log.d("Test@TabPager.getItem", "" + position);
+        if(fragments[position] == null) {
+            switch(position) {
+                case 0:
+                    fragments[position] = Tab1Fragment.newInstance(0);
+                    break;
+                case 1:
+                    fragments[position] = Tab2Fragment.newInstance(1, shared);
+                    break;
+                case 2:
+                    fragments[position] = Tab3Fragment.newInstance(2, shared);
+                    break;
+            }
         }
+        return fragments[position];
     }
 
     @Override

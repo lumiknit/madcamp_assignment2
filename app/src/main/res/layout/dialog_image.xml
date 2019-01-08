@@ -9,7 +9,9 @@
         android:id="@+id/blank"
         android:orientation="horizontal"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="match_parent"
+        android:background="#000000"
+        android:alpha="0.5"/>
 
     <RelativeLayout
         android:layout_width="match_parent"
@@ -21,31 +23,6 @@
             android:orientation="vertical"
             android:layout_centerHorizontal="true"
             android:layout_centerVertical="true">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginLeft="10dp"
-                android:layout_marginRight="10dp"
-                android:orientation="horizontal">
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text=""/>
-                <TextView
-                    android:id="@+id/text_view_delete"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:textSize="16sp"
-                    android:textStyle="bold"
-                    android:textAlignment="textEnd"
-                    android:textColor="#ffffff"
-                    android:gravity="end"
-                    android:clickable="true"
-                    android:text="삭제"/>
-            </LinearLayout>
 
             <android.support.v7.widget.CardView
                 android:layout_width="wrap_content"
@@ -80,28 +57,51 @@
                 </LinearLayout>
             </android.support.v7.widget.CardView>
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginLeft="10dp"
-                android:layout_marginRight="10dp"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:id="@+id/text_view_like"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:textSize="16sp"
-                    android:textAlignment="textEnd"
-                    android:textColor="#d0ffd0"
-                    android:gravity="end"
-                    android:clickable="true"
-                    android:text="좋아요"/>
-
-            </LinearLayout>
         </LinearLayout>
 
+        <LinearLayout
+            android:orientation="horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_margin="10dp">
+
+            <TextView
+                android:id="@+id/text_view_delete"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:textColor="#ffffff"
+                android:clickable="true"
+                android:text="삭제"/>
+
+            <TextView
+                android:id="@+id/text_view_download"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:textColor="#ffffff"
+                android:textAlignment="center"
+                android:clickable="true"
+                android:text="다운로드"/>
+
+            <TextView
+                android:id="@+id/text_view_like"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:textAlignment="textEnd"
+                android:textColor="#65d98a"
+                android:gravity="end"
+                android:clickable="true"
+                android:text="좋아요"/>
+
+        </LinearLayout>
 
     </RelativeLayout>
 </FrameLayout>
