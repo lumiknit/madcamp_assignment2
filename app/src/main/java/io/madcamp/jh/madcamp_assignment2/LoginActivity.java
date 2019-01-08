@@ -7,6 +7,10 @@ import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
+import android.widget.Button;
+import android.widget.ImageButton;
+import android.widget.Toast;
 
 import com.facebook.AccessToken;
 import com.facebook.CallbackManager;
@@ -21,16 +25,20 @@ import java.util.Arrays;
 public class LoginActivity extends AppCompatActivity {
 
     private CallbackManager callbackManager;
+    private ImageButton startButton;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
+        startButton = (ImageButton) findViewById(R.id.start_button);
+        goMain();
         callbackManager = CallbackManager.Factory.create();
         initializeFacebook();
     }
     private void initializeFacebook() {
         LoginButton loginButton = (LoginButton)findViewById(R.id.login_button);
+
         loginButton.registerCallback(callbackManager, new FacebookCallback<LoginResult>() {
             public void onSuccess(LoginResult loginResult) {
                 /* Done */
@@ -76,8 +84,8 @@ public class LoginActivity extends AppCompatActivity {
                     Log.d("Test@FB", "onSucc");
                     LoginHelper.removeDialog();
                     LoginHelper.httpPostRegistered(LoginActivity.this);
-                    Intent intent = new Intent(LoginActivity.this, MainActivity.class);
-                    startActivity(intent);
+//                    Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+//                    startActivity(intent);
                 }
 
                 @Override
@@ -110,6 +118,22 @@ public class LoginActivity extends AppCompatActivity {
         } else {
             LoginHelper.httpPostRegistered(LoginActivity.this);
         }
+    }
+
+    private void goMain(){
+        startButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if(AccessToken.getCurrentAccessToken() == null){
+                    Toast.makeText(LoginActivity.this, "로그인하라냥", Toast.LENGTH_SHORT).show();
+                } else {
+                    // Toast Message?
+                    Toast.makeText(LoginActivity.this, "반갑다냥", Toast.LENGTH_SHORT).show();
+                    Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+                    startActivity(intent);
+                }
+            }
+        });
     }
 
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
