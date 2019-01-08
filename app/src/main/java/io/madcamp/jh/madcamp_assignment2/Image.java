@@ -96,7 +96,7 @@ public class Image {
     }
 
     public String getLikeAsString() {
-        String s = "좋아요";
+        String s = "마음에 들었다냥";
         if(like > 0) s += "(" + like + ")";
         return s;
     }
