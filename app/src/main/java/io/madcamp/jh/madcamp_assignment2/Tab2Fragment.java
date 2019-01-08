@@ -1,5 +1,6 @@
 package io.madcamp.jh.madcamp_assignment2;
 
+import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
@@ -7,6 +8,7 @@ import android.content.ClipData;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.Matrix;
@@ -16,6 +18,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
+import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
 import android.support.media.ExifInterface;
 import android.support.v4.app.Fragment;
@@ -86,28 +89,34 @@ public class Tab2Fragment extends Fragment {
     private int mPage;
     private Context context;
     private View top;
+    private TabPagerAdapter.SharedData shared;
+
+
 
     private boolean isFabOpen;
 
     private static final int REQ_IMG_FILE = 1;
     private static final int REQ_TAKE_PHOTO = 2;
+    private static final int REQ_PERMISSION = 3;
 
     private SwipeRefreshLayout swipeRefreshLayout;
     private RecyclerView recyclerView;
     private ArrayList<Image> imageList;
     public Tab2Adapter adapter;
+    private Comparator<Image> comparator = Image.cmpDate;
 
     private Dialog dialog;
 
     private Uri tempPhotoUri;
 
     /* TabPagerAdapter에서 Fragment 생성할 때 사용하는 메소드 */
-    public static Tab2Fragment newInstance(int page, ArrayList<Image> imageList) {
+    public static Tab2Fragment newInstance(int page, TabPagerAdapter.SharedData shared) {
         Bundle args = new Bundle();
         args.putInt(ARG_PAGE, page);
         Tab2Fragment fragment = new Tab2Fragment();
         fragment.setArguments(args);
-        fragment.imageList = imageList;
+        fragment.shared = shared;
+        fragment.imageList = shared.imageList;
         return fragment;
     }
 
@@ -148,6 +157,7 @@ public class Tab2Fragment extends Fragment {
                 top.findViewById(R.id.fab),
                 top.findViewById(R.id.fab1),
                 top.findViewById(R.id.fab2),
+                top.findViewById(R.id.fab3),
         };
 
         isFabOpen = false;
@@ -161,10 +171,15 @@ public class Tab2Fragment extends Fragment {
                         anim();
                         break;
                     case R.id.fab1:
+                        if(!LoginHelper.checkRegistered(context)) return;
                         addImageFromFile();
                         break;
                     case R.id.fab2:
+                        if(!LoginHelper.checkRegistered(context)) return;
                         addImageFromCamera();
+                        break;
+                    case R.id.fab3:
+                        changeSort();
                         break;
                 }
             }
@@ -234,19 +249,13 @@ public class Tab2Fragment extends Fragment {
     private void loadFromJSON(String src) {
         imageList.clear();
         unpackJSON(src, imageList);
-        Collections.sort(imageList, new Comparator<Image>() {
-            @Override
-            public int compare(Image o1, Image o2) {
-                return Long.valueOf(o2.date).compareTo(o1.date);
-            }
-        });
+        Collections.sort(imageList, comparator);
         adapter.notifyDataSetChanged();
     }
 
 
     public void initializeRecyclerView() {
         recyclerView = top.findViewById(R.id.recycler_view);
-        // adapter = new Tab2Adapter(loadImageListFromInternal());
         adapter = new Tab2Adapter(imageList);
         recyclerView.setHasFixedSize(true);
         recyclerView.setLayoutManager(new GridLayoutManager(context, 3));
@@ -256,79 +265,7 @@ public class Tab2Fragment extends Fragment {
                 context, recyclerView, new RecyclerItemClickListener.OnItemClickListener() {
             @Override
             public void onItemClick(View view, final int position) {
-                dialog = new Dialog(getActivity(), android.R.style.Theme_Black_NoTitleBar);
-                dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.argb(100, 0, 0, 0)));
-                dialog.setContentView(R.layout.dialog_image);
-
-                final Image image = adapter.get(position);
-                Glide.with(getActivity())
-                        .load(image.uri.toString())
-                        .thumbnail(0.1f)
-                        .apply(new RequestOptions().override(Target.SIZE_ORIGINAL))
-                        .into((ImageView)dialog.findViewById(R.id.image_view));
-                Log.d("Test@uri", image.uri.toString());
-
-                dialog.findViewById(R.id.blank).setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        dialog.dismiss();
-                        dialog = null;
-                    }
-                });
-
-                final TextView deleteTextView = dialog.findViewById(R.id.text_view_delete);
-
-                if(imageList.get(position).fb_id.equals(AccessToken.getCurrentAccessToken().getUserId())) {
-                    deleteTextView.setOnClickListener(new View.OnClickListener() {
-                        @Override
-                        public void onClick(View v) {
-                            AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
-                            builder.setMessage("정말로 이미지를 삭제하시겠습니까?")
-                                    .setPositiveButton("예", new DialogInterface.OnClickListener() {
-                                @Override
-                                public void onClick(DialogInterface d, int which) {
-                                    httpDeleteWithId(imageList.get(position));
-                                    d.dismiss();
-                                    dialog.dismiss();
-                                    dialog = null;
-                                }
-                                    }).setNegativeButton("아니오", new DialogInterface.OnClickListener() {
-                                @Override
-                                public void onClick(DialogInterface d, int which) {
-                                    d.dismiss();
-                                }
-                            });
-                            builder.create().show();
-                        }
-                    });
-                } else {
-                    dialog.findViewById(R.id.text_view_delete).setVisibility(View.INVISIBLE);
-                }
-
-                final TextView likeTextView = dialog.findViewById(R.id.text_view_like);
-
-                likeTextView.setText(image.getLikeAsString());
-                likeTextView.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        httpPutWithId(imageList.get(position));
-                    }
-                });
-
-                final TextView tagTextView = dialog.findViewById(R.id.text_view_tag);
-                tagTextView.setText(image.tag);
-
-                dialog.getWindow().getAttributes().windowAnimations = R.style.ImageDialogAnimation;
-
-                dialog.setCancelable(true);
-                dialog.setOnCancelListener(new DialogInterface.OnCancelListener() {
-                    @Override
-                    public void onCancel(DialogInterface dialog) {
-                        dialog = null;
-                    }
-                });
-
-                dialog.show();
+                openImageDialog(position);
             }
 
             @Override
@@ -338,10 +275,93 @@ public class Tab2Fragment extends Fragment {
         }));
     }
 
+    public void openImageDialog(final int position) {
+        dialog = new Dialog(getActivity(), android.R.style.Theme_Black_NoTitleBar);
+        dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.argb(100, 0, 0, 0)));
+        dialog.setContentView(R.layout.dialog_image);
+
+        final Image image = adapter.get(position);
+        Glide.with(getActivity())
+                .load(image.uri.toString())
+                .thumbnail(0.1f)
+                .apply(new RequestOptions().override(Target.SIZE_ORIGINAL))
+                .into((ImageView)dialog.findViewById(R.id.image_view));
+        Log.d("Test@uri", image.uri.toString());
+
+        dialog.findViewById(R.id.blank).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                dialog.dismiss();
+                dialog = null;
+            }
+        });
+
+        final TextView deleteTextView = dialog.findViewById(R.id.text_view_delete);
+
+        if(AccessToken.getCurrentAccessToken() != null && imageList.get(position).fb_id.equals(AccessToken.getCurrentAccessToken().getUserId())) {
+            deleteTextView.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+                    builder.setMessage("정말로 이미지를 삭제하시겠습니까?")
+                            .setPositiveButton("예", new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface d, int which) {
+                                    httpDeleteWithId(imageList.get(position));
+                                    d.dismiss();
+                                    dialog.dismiss();
+                                    dialog = null;
+                                }
+                            }).setNegativeButton("아니오", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface d, int which) {
+                            d.dismiss();
+                        }
+                    });
+                    builder.create().show();
+                }
+            });
+        } else {
+            dialog.findViewById(R.id.text_view_delete).setVisibility(View.INVISIBLE);
+        }
+
+        final TextView downloadTextView = dialog.findViewById(R.id.text_view_download);
+        downloadTextView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                downloadImage(image);
+            }
+        });
+
+        final TextView likeTextView = dialog.findViewById(R.id.text_view_like);
+
+        likeTextView.setText(image.getLikeAsString());
+        likeTextView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                httpPutWithId(imageList.get(position));
+            }
+        });
+
+        final TextView tagTextView = dialog.findViewById(R.id.text_view_tag);
+        tagTextView.setText(image.tag);
+
+        dialog.getWindow().getAttributes().windowAnimations = R.style.ImageDialogAnimation;
+
+        dialog.setCancelable(true);
+        dialog.setOnCancelListener(new DialogInterface.OnCancelListener() {
+            @Override
+            public void onCancel(DialogInterface dialog) {
+                dialog = null;
+            }
+        });
+
+        dialog.show();
+    }
+
     public void addImageFromFile() {
         Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-        if(Build.VERSION.SDK_INT >= 18)
-            intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+        intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
         intent.setType("image/*");
         startActivityForResult(intent, REQ_IMG_FILE);
     }
@@ -365,6 +385,46 @@ public class Tab2Fragment extends Fragment {
         }
     }
 
+    public void changeSort() {
+        if(comparator == Image.cmpDate) {
+            comparator = Image.cmpLike;
+            Toast.makeText(context, "좋아요순으로 정렬했다옹", Toast.LENGTH_SHORT).show();
+        } else {
+            comparator = Image.cmpDate;
+            Toast.makeText(context, "날짜순으로 정렬했다옹", Toast.LENGTH_SHORT).show();
+        }
+        Collections.sort(imageList, comparator);
+        adapter.notifyDataSetChanged();
+    }
+
+
+    private Image resImage;
+    public void downloadImage(Image image) {
+        if(Build.VERSION.SDK_INT < 23 ||
+                getActivity().checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                        != PackageManager.PERMISSION_GRANTED) {
+            resImage = image;
+            requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                    REQ_PERMISSION);
+        } else {
+            final Toast toast = Toast.makeText(context, "다운로드 시작했다냥", Toast.LENGTH_SHORT);
+            ImageDownload download = new ImageDownload("cat_" + image._id) {
+                @Override
+                protected void onPostExecute(String s) {
+                    if(s != null) {
+                        toast.setText("다운로드 끝났다냥");
+                        toast.show();
+                    } else {
+                        toast.setText("다운로드 실패했다냥");
+                        toast.show();
+                    }
+                }
+            };
+            download.execute(image.uri.toString());
+            toast.show();
+        }
+    }
+
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         if(resultCode == Activity.RESULT_OK && (requestCode == REQ_IMG_FILE || requestCode == REQ_TAKE_PHOTO)) {
@@ -373,7 +433,7 @@ public class Tab2Fragment extends Fragment {
                     if(data.getData() != null) {
                         Log.d("Test@onRes", "Single");
                         addImage(data.getData());
-                    } else if(Build.VERSION.SDK_INT >= 18) {
+                    } else {
                         if (data.getClipData() != null) {
                             Log.d("Test@onRes", "Multiple");
                             ClipData clipData = data.getClipData();
@@ -390,12 +450,22 @@ public class Tab2Fragment extends Fragment {
         }
     }
 
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        switch(requestCode) {
+            case REQ_PERMISSION:
+                for(int i : grantResults)
+                    if(i != PackageManager.PERMISSION_GRANTED) return;
+                downloadImage(resImage);
+                break;
+        }
+    }
+
     private void addImage(Uri uri) {
         sendImage(uri);
     }
 
     public FritzVisionObject isCat(Bitmap bitmap){
-        Fritz.configure(context, "8af448df27e943cc910be87c50f55090");
         FritzVisionObjectPredictorOptions options = new FritzVisionObjectPredictorOptions.Builder()
                 .confidenceThreshold(0.1f)
                 .maxObjects(10).build();
@@ -495,16 +565,16 @@ public class Tab2Fragment extends Fragment {
 
 
 
-    private void refresh() {
+    public void refresh() {
+        swipeRefreshLayout.setRefreshing(true);
         httpGet();
-        swipeRefreshLayout.setRefreshing(false);
     }
 
 
     /* Networking */
     private void httpError() {
         Log.d("Test@Retrofit", "Failed");
-        Toast.makeText(getActivity(), "Failed to load", Toast.LENGTH_SHORT).show();
+        Toast.makeText(context, "Failed to load", Toast.LENGTH_SHORT).show();
         swipeRefreshLayout.setRefreshing(false);
     }
 
@@ -535,8 +605,13 @@ public class Tab2Fragment extends Fragment {
                     String s = response.body().string();
                     Log.d("Test@Retrofit", s);
                     loadFromJSON(s);
+                    Log.d("Test@SharedIdx", "" + shared.clickedInfoWindow);
+                    if(shared.clickedInfoWindow >= 0) {
+                        openImageDialog(shared.clickedInfoWindow);
+                        shared.clickedInfoWindow = -1;
+                    }
                 } catch(Exception e) { e.printStackTrace(); }
-                Toast.makeText(getActivity(), "Done", Toast.LENGTH_SHORT).show();
+                // Toast.makeText(context, "Done", Toast.LENGTH_SHORT).show();
                 swipeRefreshLayout.setRefreshing(false);
             }
 
@@ -561,6 +636,7 @@ public class Tab2Fragment extends Fragment {
         Log.d("Test@POST", "Built");
 
         HttpPostWithIdService service = retrofit.create(HttpPostWithIdService.class);
+        if(!LoginHelper.checkRegistered(context)) return;
         String userId = AccessToken.getCurrentAccessToken().getUserId();
 
         image.fb_id = userId;
@@ -594,7 +670,7 @@ public class Tab2Fragment extends Fragment {
                     adapter.add(newImage);
                     adapter.notifyDataSetChanged();
                 } catch(Exception e) { e.printStackTrace(); }
-                Toast.makeText(getActivity(), "Done", Toast.LENGTH_SHORT).show();
+                // Toast.makeText(context, "Done", Toast.LENGTH_SHORT).show();
                 swipeRefreshLayout.setRefreshing(false);
             }
 
@@ -619,6 +695,7 @@ public class Tab2Fragment extends Fragment {
         Log.d("Test@PUT", "Built");
 
         HttpPutWithIdService service = retrofit.create(HttpPutWithIdService.class);
+        if(!LoginHelper.checkRegistered(context)) return;
         String userId = AccessToken.getCurrentAccessToken().getUserId();
 
         Call<ResponseBody> request = service.getUserRepositories(userId, image._id);
@@ -633,7 +710,7 @@ public class Tab2Fragment extends Fragment {
                                 .setText(image.getLikeAsString());
                     }
                 } catch(Exception e) { e.printStackTrace(); }
-                Toast.makeText(getActivity(), "Done", Toast.LENGTH_SHORT).show();
+                // Toast.makeText(context, "Done", Toast.LENGTH_SHORT).show();
                 swipeRefreshLayout.setRefreshing(false);
             }
 
@@ -658,7 +735,9 @@ public class Tab2Fragment extends Fragment {
         Log.d("Test@DELETE", "Built");
 
         HttpDeleteWithIdService service = retrofit.create(HttpDeleteWithIdService.class);
+        if(!LoginHelper.checkRegistered(context)) return;
         String userId = AccessToken.getCurrentAccessToken().getUserId();
+
 
         Call<ResponseBody> request = service.getUserRepositories(userId, image._id);
         request.enqueue(new Callback<ResponseBody>() {
@@ -672,7 +751,7 @@ public class Tab2Fragment extends Fragment {
                     adapter.remove(index);
                     adapter.notifyDataSetChanged();
                 } catch(Exception e) { e.printStackTrace(); }
-                Toast.makeText(getActivity(), "Done", Toast.LENGTH_SHORT).show();
+                // Toast.makeText(context, "Done", Toast.LENGTH_SHORT).show();
                 swipeRefreshLayout.setRefreshing(false);
             }
 

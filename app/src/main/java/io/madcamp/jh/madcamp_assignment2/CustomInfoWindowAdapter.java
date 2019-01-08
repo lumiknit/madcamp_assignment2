@@ -70,7 +70,7 @@ public class CustomInfoWindowAdapter implements GoogleMap.InfoWindowAdapter {
         final TextView likeTextView = view.findViewById(R.id.text_view_like);
         final ImageView imageView = view.findViewById(R.id.image_view);
 
-        nameTextView.setText(img.name == null ? "" : img.name);
+        nameTextView.setText(img.name == null ? "" : img.name + " 님이 발견");
         dateTextView.setText(img.getDateAsString());
         likeTextView.setText(img.like > 0 ? img.getLikeAsString() : "");
 

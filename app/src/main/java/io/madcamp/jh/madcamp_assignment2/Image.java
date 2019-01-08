@@ -7,6 +7,7 @@ import com.google.android.gms.maps.model.LatLng;
 import org.json.*;
 
 import java.text.SimpleDateFormat;
+import java.util.Comparator;
 import java.util.Date;
 
 public class Image {
@@ -106,4 +107,23 @@ public class Image {
             tag = name + ", " + tag;
         }
     }
+
+
+    public static Comparator<Image> cmpDate = new Comparator<Image>() {
+        @Override
+        public int compare(Image o1, Image o2) {
+            return new Long(o2.date).compareTo(o1.date);
+        }
+    };
+
+    public static Comparator<Image> cmpLike = new Comparator<Image>() {
+        @Override
+        public int compare(Image o1, Image o2) {
+            if(o1.like == o2.like) {
+                return cmpDate.compare(o1, o2);
+            } else {
+                return new Integer(o2.like).compareTo(o1.like);
+            }
+        }
+    };
 }
