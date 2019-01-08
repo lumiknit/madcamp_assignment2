@@ -93,7 +93,7 @@ public class Tab3Fragment extends Fragment {
                     public void onInfoWindowClick(Marker marker) {
                         TabLayout tabLayout = (TabLayout)getActivity().findViewById(R.id.sliding_tabs);
                         tabLayout.getTabAt(1).select();
-                        shared.clickedInfoWindow = imageList.indexOf(marker.getTag());
+                        shared.clickedInfoWindow = imageList.indexOf(((CustomInfoWindowAdapter.Tag)marker.getTag()).image);
                     }
                 });
             }
@@ -163,18 +163,15 @@ public class Tab3Fragment extends Fragment {
                 googleMap.clear();
 
                 int n = 0;
-                LatLng center = null;
+                double lat = 0.0;
+                double lng = 0.0;
 
                 for(Image img : imageList) {
                     if(img != null && img.latLng != null) {
                         final LatLng ll = img.latLng;
-                        if(center == null) {
-                            center = new LatLng(ll.latitude, ll.longitude);
-                            n = 1;
-                        } else if(approxDistSq(center, ll) < 0.0002) {
-                            center = new LatLng(
-                                    center.latitude + ll.latitude,
-                                    center.longitude + ll.longitude);
+                        if(n == 0 || approxDistSq(new LatLng(lat, lng), ll) < 0.0002) {
+                            lat += ll.latitude;
+                            lng += ll.longitude;
                             n += 1;
                         }
 
@@ -189,8 +186,8 @@ public class Tab3Fragment extends Fragment {
                         googleMap.addMarker(markerOptions).setTag(new CustomInfoWindowAdapter.Tag(img));
                     }
                 }
-                if(center != null) {
-                    googleMap.moveCamera(CameraUpdateFactory.newLatLng(new LatLng(center.latitude / n, center.longitude / n)));
+                if(n > 0) {
+                    googleMap.moveCamera(CameraUpdateFactory.newLatLng(new LatLng(lat / n, lng / n)));
                     googleMap.animateCamera(CameraUpdateFactory.zoomTo(15));
                 }
             }

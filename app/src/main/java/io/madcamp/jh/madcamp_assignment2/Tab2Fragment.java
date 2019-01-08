@@ -97,6 +97,7 @@ public class Tab2Fragment extends Fragment {
     private RecyclerView recyclerView;
     private ArrayList<Image> imageList;
     public Tab2Adapter adapter;
+    private Comparator<Image> comparator = Image.cmpDate;
 
     private Dialog dialog;
 
@@ -150,6 +151,7 @@ public class Tab2Fragment extends Fragment {
                 top.findViewById(R.id.fab),
                 top.findViewById(R.id.fab1),
                 top.findViewById(R.id.fab2),
+                top.findViewById(R.id.fab3),
         };
 
         isFabOpen = false;
@@ -163,10 +165,15 @@ public class Tab2Fragment extends Fragment {
                         anim();
                         break;
                     case R.id.fab1:
+                        if(!LoginHelper.checkRegistered(context)) return;
                         addImageFromFile();
                         break;
                     case R.id.fab2:
+                        if(!LoginHelper.checkRegistered(context)) return;
                         addImageFromCamera();
+                        break;
+                    case R.id.fab3:
+                        changeSort();
                         break;
                 }
             }
@@ -236,12 +243,7 @@ public class Tab2Fragment extends Fragment {
     private void loadFromJSON(String src) {
         imageList.clear();
         unpackJSON(src, imageList);
-        Collections.sort(imageList, new Comparator<Image>() {
-            @Override
-            public int compare(Image o1, Image o2) {
-                return Long.valueOf(o2.date).compareTo(o1.date);
-            }
-        });
+        Collections.sort(imageList, comparator);
         adapter.notifyDataSetChanged();
     }
 
@@ -290,7 +292,7 @@ public class Tab2Fragment extends Fragment {
 
         final TextView deleteTextView = dialog.findViewById(R.id.text_view_delete);
 
-        if(imageList.get(position).fb_id.equals(AccessToken.getCurrentAccessToken().getUserId())) {
+        if(AccessToken.getCurrentAccessToken() != null && imageList.get(position).fb_id.equals(AccessToken.getCurrentAccessToken().getUserId())) {
             deleteTextView.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
@@ -345,8 +347,7 @@ public class Tab2Fragment extends Fragment {
 
     public void addImageFromFile() {
         Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-        if(Build.VERSION.SDK_INT >= 18)
-            intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+        intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
         intent.setType("image/*");
         startActivityForResult(intent, REQ_IMG_FILE);
     }
@@ -370,6 +371,18 @@ public class Tab2Fragment extends Fragment {
         }
     }
 
+    public void changeSort() {
+        if(comparator == Image.cmpDate) {
+            comparator = Image.cmpLike;
+            Toast.makeText(context, "좋아요순으로 정렬했다옹", Toast.LENGTH_SHORT).show();
+        } else {
+            comparator = Image.cmpDate;
+            Toast.makeText(context, "날짜순으로 정렬했다옹", Toast.LENGTH_SHORT).show();
+        }
+        Collections.sort(imageList, comparator);
+        adapter.notifyDataSetChanged();
+    }
+
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         if(resultCode == Activity.RESULT_OK && (requestCode == REQ_IMG_FILE || requestCode == REQ_TAKE_PHOTO)) {
@@ -378,7 +391,7 @@ public class Tab2Fragment extends Fragment {
                     if(data.getData() != null) {
                         Log.d("Test@onRes", "Single");
                         addImage(data.getData());
-                    } else if(Build.VERSION.SDK_INT >= 18) {
+                    } else {
                         if (data.getClipData() != null) {
                             Log.d("Test@onRes", "Multiple");
                             ClipData clipData = data.getClipData();
@@ -539,12 +552,13 @@ public class Tab2Fragment extends Fragment {
                     String s = response.body().string();
                     Log.d("Test@Retrofit", s);
                     loadFromJSON(s);
+                    Log.d("Test@SharedIdx", "" + shared.clickedInfoWindow);
                     if(shared.clickedInfoWindow >= 0) {
                         openImageDialog(shared.clickedInfoWindow);
                         shared.clickedInfoWindow = -1;
                     }
                 } catch(Exception e) { e.printStackTrace(); }
-                Toast.makeText(context, "Done", Toast.LENGTH_SHORT).show();
+                // Toast.makeText(context, "Done", Toast.LENGTH_SHORT).show();
                 swipeRefreshLayout.setRefreshing(false);
             }
 
@@ -569,6 +583,7 @@ public class Tab2Fragment extends Fragment {
         Log.d("Test@POST", "Built");
 
         HttpPostWithIdService service = retrofit.create(HttpPostWithIdService.class);
+        if(!LoginHelper.checkRegistered(context)) return;
         String userId = AccessToken.getCurrentAccessToken().getUserId();
 
         image.fb_id = userId;
@@ -602,7 +617,7 @@ public class Tab2Fragment extends Fragment {
                     adapter.add(newImage);
                     adapter.notifyDataSetChanged();
                 } catch(Exception e) { e.printStackTrace(); }
-                Toast.makeText(context, "Done", Toast.LENGTH_SHORT).show();
+                // Toast.makeText(context, "Done", Toast.LENGTH_SHORT).show();
                 swipeRefreshLayout.setRefreshing(false);
             }
 
@@ -627,6 +642,7 @@ public class Tab2Fragment extends Fragment {
         Log.d("Test@PUT", "Built");
 
         HttpPutWithIdService service = retrofit.create(HttpPutWithIdService.class);
+        if(!LoginHelper.checkRegistered(context)) return;
         String userId = AccessToken.getCurrentAccessToken().getUserId();
 
         Call<ResponseBody> request = service.getUserRepositories(userId, image._id);
@@ -641,7 +657,7 @@ public class Tab2Fragment extends Fragment {
                                 .setText(image.getLikeAsString());
                     }
                 } catch(Exception e) { e.printStackTrace(); }
-                Toast.makeText(context, "Done", Toast.LENGTH_SHORT).show();
+                // Toast.makeText(context, "Done", Toast.LENGTH_SHORT).show();
                 swipeRefreshLayout.setRefreshing(false);
             }
 
@@ -666,7 +682,9 @@ public class Tab2Fragment extends Fragment {
         Log.d("Test@DELETE", "Built");
 
         HttpDeleteWithIdService service = retrofit.create(HttpDeleteWithIdService.class);
+        if(!LoginHelper.checkRegistered(context)) return;
         String userId = AccessToken.getCurrentAccessToken().getUserId();
+
 
         Call<ResponseBody> request = service.getUserRepositories(userId, image._id);
         request.enqueue(new Callback<ResponseBody>() {
@@ -680,7 +698,7 @@ public class Tab2Fragment extends Fragment {
                     adapter.remove(index);
                     adapter.notifyDataSetChanged();
                 } catch(Exception e) { e.printStackTrace(); }
-                Toast.makeText(context, "Done", Toast.LENGTH_SHORT).show();
+                // Toast.makeText(context, "Done", Toast.LENGTH_SHORT).show();
                 swipeRefreshLayout.setRefreshing(false);
             }
 
