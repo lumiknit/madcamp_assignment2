@@ -495,16 +495,16 @@ public class Tab2Fragment extends Fragment {
 
 
 
-    private void refresh() {
+    public void refresh() {
+        swipeRefreshLayout.setRefreshing(true);
         httpGet();
-        swipeRefreshLayout.setRefreshing(false);
     }
 
 
     /* Networking */
     private void httpError() {
         Log.d("Test@Retrofit", "Failed");
-        Toast.makeText(getActivity(), "Failed to load", Toast.LENGTH_SHORT).show();
+        Toast.makeText(context, "Failed to load", Toast.LENGTH_SHORT).show();
         swipeRefreshLayout.setRefreshing(false);
     }
 
@@ -536,7 +536,7 @@ public class Tab2Fragment extends Fragment {
                     Log.d("Test@Retrofit", s);
                     loadFromJSON(s);
                 } catch(Exception e) { e.printStackTrace(); }
-                Toast.makeText(getActivity(), "Done", Toast.LENGTH_SHORT).show();
+                Toast.makeText(context, "Done", Toast.LENGTH_SHORT).show();
                 swipeRefreshLayout.setRefreshing(false);
             }
 
@@ -594,7 +594,7 @@ public class Tab2Fragment extends Fragment {
                     adapter.add(newImage);
                     adapter.notifyDataSetChanged();
                 } catch(Exception e) { e.printStackTrace(); }
-                Toast.makeText(getActivity(), "Done", Toast.LENGTH_SHORT).show();
+                Toast.makeText(context, "Done", Toast.LENGTH_SHORT).show();
                 swipeRefreshLayout.setRefreshing(false);
             }
 
@@ -633,7 +633,7 @@ public class Tab2Fragment extends Fragment {
                                 .setText(image.getLikeAsString());
                     }
                 } catch(Exception e) { e.printStackTrace(); }
-                Toast.makeText(getActivity(), "Done", Toast.LENGTH_SHORT).show();
+                Toast.makeText(context, "Done", Toast.LENGTH_SHORT).show();
                 swipeRefreshLayout.setRefreshing(false);
             }
 
@@ -672,7 +672,7 @@ public class Tab2Fragment extends Fragment {
                     adapter.remove(index);
                     adapter.notifyDataSetChanged();
                 } catch(Exception e) { e.printStackTrace(); }
-                Toast.makeText(getActivity(), "Done", Toast.LENGTH_SHORT).show();
+                Toast.makeText(context, "Done", Toast.LENGTH_SHORT).show();
                 swipeRefreshLayout.setRefreshing(false);
             }
 

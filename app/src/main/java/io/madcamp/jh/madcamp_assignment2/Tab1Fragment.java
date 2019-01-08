@@ -163,7 +163,7 @@ public class Tab1Fragment extends Fragment {
             public void onRefresh() {
                 AccessToken token = AccessToken.getCurrentAccessToken();
                 if(LoginHelper.checkRegistered(context)) {
-                    Toast.makeText(getActivity(), "Test", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(context, "Test", Toast.LENGTH_SHORT).show();
                     refresh();
                 } else {
                     swipeRefreshLayout.setRefreshing(false);
@@ -501,14 +501,15 @@ public class Tab1Fragment extends Fragment {
         httpGetWithId();
     }
 
-    private void refresh() {
+    public void refresh() {
+        swipeRefreshLayout.setRefreshing(true);
         httpGetWithId();
     }
 
 
     private void httpError() {
         Log.d("Test@Retrofit", "Failed");
-        Toast.makeText(getActivity(), "Failed to load", Toast.LENGTH_SHORT).show();
+        Toast.makeText(context, "Failed to load", Toast.LENGTH_SHORT).show();
         swipeRefreshLayout.setRefreshing(false);
     }
 
@@ -545,7 +546,7 @@ public class Tab1Fragment extends Fragment {
                     updateContacts();
                     Log.d("Test@RetrofitResult", "Updated");
                 } catch(Exception e) { e.printStackTrace(); }
-                Toast.makeText(getActivity(), "Done", Toast.LENGTH_SHORT).show();
+                Toast.makeText(context, "Done", Toast.LENGTH_SHORT).show();
                 swipeRefreshLayout.setRefreshing(false);
             }
 
@@ -583,7 +584,7 @@ public class Tab1Fragment extends Fragment {
                 try {
                     Log.d("Test@Retrofit", response.body().string());
                 } catch(Exception e) { e.printStackTrace(); }
-                Toast.makeText(getActivity(), "Done", Toast.LENGTH_SHORT).show();
+                Toast.makeText(context, "Done", Toast.LENGTH_SHORT).show();
                 swipeRefreshLayout.setRefreshing(false);
             }
 
@@ -628,7 +629,7 @@ public class Tab1Fragment extends Fragment {
                     Log.d("Test@Retrofit", body);
                     contact.loadFromJSON(new JSONObject(body));
                 } catch(Exception e) { e.printStackTrace(); }
-                Toast.makeText(getActivity(), "Done", Toast.LENGTH_SHORT).show();
+                Toast.makeText(context, "Done", Toast.LENGTH_SHORT).show();
                 swipeRefreshLayout.setRefreshing(false);
             }
 
@@ -671,7 +672,7 @@ public class Tab1Fragment extends Fragment {
                         updateContacts();
                     }
                 } catch(Exception e) { e.printStackTrace(); }
-                Toast.makeText(getActivity(), "Done", Toast.LENGTH_SHORT).show();
+                Toast.makeText(context, "Done", Toast.LENGTH_SHORT).show();
                 swipeRefreshLayout.setRefreshing(false);
             }
 

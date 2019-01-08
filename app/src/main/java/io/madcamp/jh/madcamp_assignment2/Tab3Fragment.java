@@ -138,6 +138,7 @@ public class Tab3Fragment extends Fragment {
 
 
     public void updateMarkers() {
+        Log.d("Test@updateMarkers", "called");
         if(mapView == null) {
             mapView = getView().findViewById(R.id.map);
             //Log.d("Test@updateMarkers", "MapView was not loaded");

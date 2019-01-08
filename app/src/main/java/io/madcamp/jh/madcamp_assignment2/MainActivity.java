@@ -107,20 +107,31 @@ public class MainActivity extends AppCompatActivity {
         /* tabLayout 초기화 */
         tabLayout.setupWithViewPager(viewPager);
 
-//        viewPager.addOnPageChangeListener(new ViewPager.OnPageChangeListener() {
-//            @Override
-//            public void onPageScrolled(int i, float v, int i1) { }
-//            @Override
-//            public void onPageSelected(int i) {
-//                if(i == 2) {
-//                    /* Load List */
-//                    Tab3Fragment frag3 = (Tab3Fragment)adapter.getItem(2);
-//                    frag3.updateMarkers();
-//                }
-//            }
-//            @Override
-//            public void onPageScrollStateChanged(int i) { }
-//        });
+        /* Tab Change Detector */
+        viewPager.addOnPageChangeListener(new ViewPager.OnPageChangeListener() {
+            @Override
+            public void onPageScrolled(int i, float v, int i1) {
+            }
+            @Override
+            public void onPageSelected(int i) {
+            }
+            @Override
+            public void onPageScrollStateChanged(int i) {
+                if(i == 0) {
+                    switch(tabLayout.getSelectedTabPosition()) {
+                        case 0:
+                            ((Tab1Fragment)adapter.getItem(0)).refresh();
+                            break;
+                        case 1:
+                            ((Tab2Fragment)adapter.getItem(1)).refresh();
+                            break;
+                        case 2:
+                            ((Tab3Fragment)adapter.getItem(2)).updateMarkers();
+                            break;
+                    }
+                }
+            }
+        });
     }
 
     @Override
